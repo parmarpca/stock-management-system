@@ -24,5 +24,8 @@ export default defineConfig(({ mode }) => ({
         manualChunks: undefined,
       },
     },
+    outDir: "dist",
+    assetsDir: "assets",
   },
+  base: "/",
 }));
