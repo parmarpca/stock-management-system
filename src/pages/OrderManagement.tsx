@@ -1,40 +1,39 @@
-
-import SlipManager from '@/components/SlipManager';
-import Layout from '@/components/Layout';
-import { useStockData } from '@/hooks/useStockData';
+// import OrderManager from "@/components/OrderManager";
+import Layout from "@/components/Layout";
+import OrderManager from "@/components/OrderManager";
+import { useStockData } from "@/hooks/useStockData";
 
 const OrderManagement = () => {
-  const { stocks, customers, slips, setStocks, setCustomers, setSlips } = useStockData();
-  const lowStockCount = stocks.filter(stock => stock.quantity < 50).length;
+  const {
+    stocks,
+    customers,
+    orders,
+    loading,
+    createOrder,
+    createCustomer,
+    fetchCustomers,
+  } = useStockData();
+  const lowStockCount = stocks.filter((stock) => stock.quantity < 50).length;
 
-  const handleSlipCreation = (newSlip: Omit<any, 'id'>) => {
-    const slip = {
-      ...newSlip,
-      id: Date.now().toString(),
-    };
-    
-    setStocks(prevStocks => 
-      prevStocks.map(stock => 
-        stock.id === newSlip.stock_id 
-          ? { ...stock, quantity: stock.quantity - newSlip.pieces_used, updated_at: new Date().toISOString().split('T')[0] }
-          : stock
-      )
+  if (loading) {
+    return (
+      <Layout title="Order Management" lowStockCount={lowStockCount}>
+        <div className="flex items-center justify-center h-64">
+          <div className="text-lg">Loading...</div>
+        </div>
+      </Layout>
     );
-    
-    setSlips(prevSlips => [slip, ...prevSlips]);
-  };
+  }
 
   return (
-    <Layout 
-      title="Order Management" 
-      lowStockCount={lowStockCount}
-    >
-      <SlipManager 
+    <Layout title="Order Management" lowStockCount={lowStockCount}>
+      <OrderManager
         stocks={stocks}
         customers={customers}
-        slips={slips}
-        onSlipCreate={handleSlipCreation}
-        setCustomers={setCustomers}
+        orders={orders}
+        onOrderCreate={createOrder}
+        onCustomerCreate={createCustomer}
+        fetchCustomers={fetchCustomers}
       />
     </Layout>
   );
