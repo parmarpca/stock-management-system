@@ -10,7 +10,6 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 interface Customer {
   id: string;
   name: string;
-  color_code: string;
   created_at: string;
 }
 
@@ -42,7 +41,6 @@ const CustomerList = ({ customers, setCustomers }: CustomerListProps) => {
     const customer: Customer = {
       ...newCustomer,
       id: Date.now().toString(),
-      color_code: '', // Not used anymore
       created_at: new Date().toISOString().split('T')[0]
     };
     
@@ -96,6 +94,7 @@ const CustomerList = ({ customers, setCustomers }: CustomerListProps) => {
                   value={newCustomer.name}
                   onChange={(e) => setNewCustomer(prev => ({ ...prev, name: e.target.value }))}
                   placeholder="ABC Construction"
+                  className="w-full"
                 />
               </div>
               <Button onClick={handleAddCustomer} className="w-full">Add Customer</Button>
@@ -155,6 +154,7 @@ const CustomerList = ({ customers, setCustomers }: CustomerListProps) => {
                 value={editingCustomer?.name || ''}
                 onChange={(e) => setEditingCustomer(prev => prev ? { ...prev, name: e.target.value } : null)}
                 placeholder="ABC Construction"
+                className="w-full"
               />
             </div>
             <Button onClick={handleEditCustomer} className="w-full">Update Customer</Button>

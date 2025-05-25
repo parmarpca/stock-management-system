@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { ShoppingCart, Plus, Printer, Edit } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -188,6 +187,7 @@ const SlipManager = ({ stocks, customers, slips, onSlipCreate, setCustomers }: S
                     onChange={(e) => setCustomerName(e.target.value)}
                     placeholder="Enter customer name"
                     list="customer-suggestions"
+                    className="w-full"
                   />
                   <datalist id="customer-suggestions">
                     {customers.map(customer => (
@@ -203,6 +203,7 @@ const SlipManager = ({ stocks, customers, slips, onSlipCreate, setCustomers }: S
                     value={colorCode}
                     onChange={(e) => setColorCode(e.target.value)}
                     placeholder="e.g., Blue, Red, Green"
+                    className="w-full"
                   />
                 </div>
               </div>
@@ -210,7 +211,7 @@ const SlipManager = ({ stocks, customers, slips, onSlipCreate, setCustomers }: S
               <div>
                 <Label htmlFor="length">Length</Label>
                 <Select value={length} onValueChange={(value: '16ft' | '12ft') => setLength(value)}>
-                  <SelectTrigger>
+                  <SelectTrigger className="w-full">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -266,6 +267,7 @@ const SlipManager = ({ stocks, customers, slips, onSlipCreate, setCustomers }: S
                   value={pieces}
                   onChange={(e) => setPieces(parseInt(e.target.value) || 0)}
                   placeholder="Enter number of pieces"
+                  className="w-full"
                 />
                 {selectedStock && pieces > selectedStock.quantity && (
                   <p className="text-sm text-red-600 mt-1">
@@ -296,11 +298,11 @@ const SlipManager = ({ stocks, customers, slips, onSlipCreate, setCustomers }: S
             <div>
               <Label htmlFor="filter-customer">Customer</Label>
               <Select value={filterCustomer} onValueChange={setFilterCustomer}>
-                <SelectTrigger>
+                <SelectTrigger className="w-full">
                   <SelectValue placeholder="All customers" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All customers</SelectItem>
+                  <SelectItem value="all">All customers</SelectItem>
                   {customers.map(customer => (
                     <SelectItem key={customer.id} value={customer.id}>
                       {customer.name}
@@ -317,6 +319,7 @@ const SlipManager = ({ stocks, customers, slips, onSlipCreate, setCustomers }: S
                 type="date"
                 value={filterDateFrom}
                 onChange={(e) => setFilterDateFrom(e.target.value)}
+                className="w-full"
               />
             </div>
             
@@ -327,6 +330,7 @@ const SlipManager = ({ stocks, customers, slips, onSlipCreate, setCustomers }: S
                 type="date"
                 value={filterDateTo}
                 onChange={(e) => setFilterDateTo(e.target.value)}
+                className="w-full"
               />
             </div>
           </div>

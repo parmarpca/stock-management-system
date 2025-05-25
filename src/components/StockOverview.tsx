@@ -1,13 +1,12 @@
-
 import { useState } from 'react';
-import { Package, Plus, Edit, AlertTriangle, Filter } from 'lucide-react';
+import { Package, Plus, Edit, Search, Filter } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Badge } from '@/components/ui/badge';
+import { Switch } from '@/components/ui/switch';
 
 interface Stock {
   id: string;
@@ -21,16 +20,17 @@ interface Stock {
 
 interface StockOverviewProps {
   stocks: Stock[];
-  setStocks: React.Dispatch<React.SetStateAction<Stock[]>>;
-  showLowStockOnly?: boolean;
+  setStocks?: React.Dispatch<React.SetStateAction<Stock[]>>;
+  showLowStockOnly: boolean;
+  onFilterChange?: (showLowOnly: boolean) => void;
 }
 
-const StockOverview = ({ stocks, setStocks, showLowStockOnly = false }: StockOverviewProps) => {
+const StockOverview = ({ stocks, setStocks, showLowStockOnly, onFilterChange }: StockOverviewProps) => {
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
-  const [editingStock, setEditingStock] = useState<Stock | null>(null);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
-  const [filterLowStock, setFilterLowStock] = useState(showLowStockOnly);
   const [quickCode, setQuickCode] = useState('');
+  const [editingStock, setEditingStock] = useState<Stock | null>(null);
 
   const [newStock, setNewStock] = useState({
     name: '',
@@ -39,253 +39,242 @@ const StockOverview = ({ stocks, setStocks, showLowStockOnly = false }: StockOve
     quantity: 0
   });
 
-  // Auto-fill when code is entered
-  const existingStock = stocks.find(s => s.code.toLowerCase() === quickCode.toLowerCase());
-
   const filteredStocks = stocks.filter(stock => {
     const matchesSearch = stock.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          stock.code.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesLowStock = !filterLowStock || stock.quantity < 50;
+    const matchesLowStock = !showLowStockOnly || stock.quantity < 50;
     return matchesSearch && matchesLowStock;
   });
 
-  const handleQuickCodeChange = (code: string) => {
-    setQuickCode(code);
-    const found = stocks.find(s => s.code.toLowerCase() === code.toLowerCase());
-    if (found) {
-      setNewStock({
-        name: found.name,
-        code: found.code,
-        length: found.length,
-        quantity: 0
-      });
-    } else {
-      setNewStock(prev => ({ ...prev, code: code }));
-    }
-  };
-
-  const getCodeSuggestions = () => {
-    if (!newStock.code) return [];
-    return stocks.filter(s => 
-      s.code.toLowerCase().includes(newStock.code.toLowerCase()) ||
-      s.name.toLowerCase().includes(newStock.code.toLowerCase())
-    ).slice(0, 5);
-  };
-
   const handleAddStock = () => {
-    // Check if stock with this code already exists
-    const existingStockIndex = stocks.findIndex(s => s.code === newStock.code);
-    
-    if (existingStockIndex !== -1) {
-      // Update existing stock quantity
-      setStocks(prev => prev.map((stock, index) => 
-        index === existingStockIndex 
-          ? { ...stock, quantity: stock.quantity + newStock.quantity, updated_at: new Date().toISOString().split('T')[0] }
-          : stock
-      ));
-    } else {
-      // Add new stock
-      const stock: Stock = {
-        ...newStock,
-        id: Date.now().toString(),
-        created_at: new Date().toISOString().split('T')[0],
-        updated_at: new Date().toISOString().split('T')[0]
-      };
-      setStocks(prev => [...prev, stock]);
+    if (!newStock.name.trim() || !newStock.code.trim() || newStock.quantity <= 0) {
+      alert('Please fill all fields');
+      return;
     }
+
+    const stock: Stock = {
+      ...newStock,
+      id: Date.now().toString(),
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    };
     
+    setStocks(prev => [...prev, stock]);
     setNewStock({ name: '', code: '', length: '16ft', quantity: 0 });
-    setQuickCode('');
     setIsAddDialogOpen(false);
   };
 
-  const handleEditStock = (stock: Stock) => {
-    setStocks(prev => prev.map(s => s.id === stock.id ? { ...stock, updated_at: new Date().toISOString().split('T')[0] } : s));
+  const handleEditStock = () => {
+    if (!editingStock || !editingStock.name.trim() || !editingStock.code.trim() || editingStock.quantity <= 0) {
+      alert('Please fill all fields');
+      return;
+    }
+
+    setStocks(prev => 
+      prev.map(stock => 
+        stock.id === editingStock.id 
+          ? { ...editingStock, updated_at: new Date().toISOString() }
+          : stock
+      )
+    );
     setEditingStock(null);
+    setIsEditDialogOpen(false);
+  };
+
+  const openEditDialog = (stock: Stock) => {
+    setEditingStock({ ...stock });
+    setIsEditDialogOpen(true);
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-        <h2 className="text-2xl font-bold">Stock Management</h2>
-        <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
-          <DialogTrigger asChild>
-            <Button className="flex items-center space-x-2">
-              <Plus className="h-4 w-4" />
-              <span>Add Stock</span>
-            </Button>
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Add New Stock Item</DialogTitle>
-            </DialogHeader>
-            <div className="space-y-4">
-              <div>
-                <Label htmlFor="quick-code">Quick Code Entry</Label>
-                <Input
-                  id="quick-code"
-                  value={quickCode}
-                  onChange={(e) => handleQuickCodeChange(e.target.value)}
-                  placeholder="Enter stock code..."
-                />
-                {existingStock && (
-                  <p className="text-sm text-green-600 mt-1">
-                    Found: {existingStock.name} - Current quantity: {existingStock.quantity}
-                  </p>
-                )}
-              </div>
-              
-              <div>
-                <Label htmlFor="name">Name</Label>
-                <Input
-                  id="name"
-                  value={newStock.name}
-                  onChange={(e) => setNewStock(prev => ({ ...prev, name: e.target.value }))}
-                  placeholder="Steel Rebar"
-                />
-              </div>
-              
-              <div>
-                <Label htmlFor="code">Code</Label>
-                <Input
-                  id="code"
-                  value={newStock.code}
-                  onChange={(e) => setNewStock(prev => ({ ...prev, code: e.target.value }))}
-                  placeholder="SR001"
-                />
-                {getCodeSuggestions().length > 0 && (
-                  <div className="mt-2 border rounded-md p-2 bg-gray-50">
-                    <p className="text-xs text-gray-600 mb-1">Suggestions:</p>
-                    {getCodeSuggestions().map(suggestion => (
-                      <button
-                        key={suggestion.id}
-                        className="block w-full text-left text-sm p-1 hover:bg-gray-200 rounded"
-                        onClick={() => {
-                          setNewStock({
-                            name: suggestion.name,
-                            code: suggestion.code,
-                            length: suggestion.length,
-                            quantity: 0
-                          });
-                        }}
-                      >
-                        {suggestion.code} - {suggestion.name}
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-              
-              <div>
-                <Label htmlFor="length">Length</Label>
-                <Select value={newStock.length} onValueChange={(value: '16ft' | '12ft') => setNewStock(prev => ({ ...prev, length: value }))}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="16ft">16ft</SelectItem>
-                    <SelectItem value="12ft">12ft</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              
-              <div>
-                <Label htmlFor="quantity">Quantity</Label>
-                <Input
-                  id="quantity"
-                  type="number"
-                  value={newStock.quantity}
-                  onChange={(e) => setNewStock(prev => ({ ...prev, quantity: parseInt(e.target.value) || 0 }))}
-                />
-              </div>
-              
-              <Button onClick={handleAddStock} className="w-full">
-                {existingStock ? 'Update Quantity' : 'Add Stock'}
-              </Button>
-            </div>
-          </DialogContent>
-        </Dialog>
-      </div>
-
-      <div className="flex flex-col sm:flex-row gap-4">
-        <Input
-          placeholder="Search by name or code..."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          className="max-w-md"
-        />
+    <div className="space-y-4 lg:space-y-6">
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+        <h2 className="text-xl lg:text-2xl font-bold">Stock Overview</h2>
         
-        <Button
-          variant={filterLowStock ? "default" : "outline"}
-          onClick={() => setFilterLowStock(!filterLowStock)}
-          className="flex items-center space-x-2"
-        >
-          <Filter className="h-4 w-4" />
-          <span>Low Stock Only</span>
-        </Button>
+        {/* Filter Toggle */}
+        {onFilterChange && (
+          <div className="flex items-center space-x-2">
+            <Switch
+              id="low-stock-filter"
+              checked={showLowStockOnly}
+              onCheckedChange={onFilterChange}
+            />
+            <Label htmlFor="low-stock-filter" className="text-sm">Show Low Stock Only</Label>
+          </div>
+        )}
+
+        {setStocks && (
+          <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
+            <DialogTrigger asChild>
+              <Button className="flex items-center space-x-2">
+                <Plus className="h-4 w-4" />
+                <span>Add Stock</span>
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="w-[95vw] max-w-md">
+              <DialogHeader>
+                <DialogTitle>Add New Stock</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4">
+                <div>
+                  <Label htmlFor="stock-name">Stock Name</Label>
+                  <Input
+                    id="stock-name"
+                    value={newStock.name}
+                    onChange={(e) => setNewStock(prev => ({ ...prev, name: e.target.value }))}
+                    placeholder="Steel Rebar"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="stock-code">Stock Code</Label>
+                  <Input
+                    id="stock-code"
+                    value={newStock.code}
+                    onChange={(e) => setNewStock(prev => ({ ...prev, code: e.target.value }))}
+                    placeholder="SR001"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="stock-length">Stock Length</Label>
+                  <select
+                    id="stock-length"
+                    className="w-full border rounded-md py-2 px-3"
+                    value={newStock.length}
+                    onChange={(e) => setNewStock(prev => ({ ...prev, length: e.target.value as '16ft' | '12ft' }))}
+                  >
+                    <option value="16ft">16ft</option>
+                    <option value="12ft">12ft</option>
+                  </select>
+                </div>
+                <div>
+                  <Label htmlFor="stock-quantity">Stock Quantity</Label>
+                  <Input
+                    id="stock-quantity"
+                    type="number"
+                    value={newStock.quantity}
+                    onChange={(e) => setNewStock(prev => ({ ...prev, quantity: parseInt(e.target.value) || 0 }))}
+                    placeholder="100"
+                  />
+                </div>
+                <Button onClick={handleAddStock} className="w-full">Add Stock</Button>
+              </div>
+            </DialogContent>
+          </Dialog>
+        )}
       </div>
 
-      <div className="grid gap-4">
+      {/* Search and Quick Code Entry */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+          <Input
+            placeholder="Search stocks..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="pl-10 w-full"
+          />
+        </div>
+        
+        {setStocks && (
+          <Input
+            placeholder="Quick code entry..."
+            value={quickCode}
+            onChange={(e) => setQuickCode(e.target.value)}
+            className="w-full"
+          />
+        )}
+      </div>
+
+      {/* Stock Grid */}
+      <div className="grid gap-3 lg:gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
         {filteredStocks.map((stock) => (
-          <Card key={stock.id} className={stock.quantity < 50 ? 'border-red-500 bg-red-50' : ''}>
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-4">
-                  <Package className="h-8 w-8 text-blue-600" />
-                  <div>
-                    <h3 className="font-semibold text-lg">{stock.name}</h3>
-                    <p className="text-gray-600">Code: {stock.code} | Length: {stock.length}</p>
-                    <p className="text-sm text-gray-500">Updated: {stock.updated_at}</p>
-                  </div>
-                </div>
-                
-                <div className="flex items-center space-x-4">
-                  <div className="text-right">
-                    <div className="flex items-center space-x-2">
-                      <span className="text-2xl font-bold">{stock.quantity}</span>
-                      {stock.quantity < 50 && <AlertTriangle className="h-5 w-5 text-red-500" />}
-                    </div>
-                    <p className="text-sm text-gray-500">pieces</p>
-                  </div>
-                  
+          <Card key={stock.id} className={stock.quantity < 50 ? 'border-red-200 bg-red-50' : ''}>
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center space-x-2">
+                  <Package className="h-5 w-5 text-blue-600" />
                   {stock.quantity < 50 && (
-                    <Badge variant="destructive">Low Stock</Badge>
+                    <Badge variant="destructive" className="text-xs">Low Stock</Badge>
                   )}
-                  
-                  <Dialog open={editingStock?.id === stock.id} onOpenChange={(open) => !open && setEditingStock(null)}>
-                    <DialogTrigger asChild>
-                      <Button variant="outline" size="sm" onClick={() => setEditingStock(stock)}>
-                        <Edit className="h-4 w-4" />
-                      </Button>
-                    </DialogTrigger>
-                    <DialogContent>
-                      <DialogHeader>
-                        <DialogTitle>Edit Stock Item</DialogTitle>
-                      </DialogHeader>
-                      {editingStock && (
-                        <div className="space-y-4">
-                          <div>
-                            <Label htmlFor="edit-quantity">Quantity</Label>
-                            <Input
-                              id="edit-quantity"
-                              type="number"
-                              value={editingStock.quantity}
-                              onChange={(e) => setEditingStock(prev => prev ? ({ ...prev, quantity: parseInt(e.target.value) || 0 }) : null)}
-                            />
-                          </div>
-                          <Button onClick={() => handleEditStock(editingStock)} className="w-full">
-                            Update Stock
-                          </Button>
-                        </div>
-                      )}
-                    </DialogContent>
-                  </Dialog>
+                </div>
+                {setStocks && (
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    onClick={() => openEditDialog(stock)}
+                  >
+                    <Edit className="h-4 w-4" />
+                  </Button>
+                )}
+              </div>
+              
+              <div className="space-y-2">
+                <h3 className="font-semibold text-sm lg:text-base truncate">{stock.name}</h3>
+                <p className="text-xs text-gray-600">Code: {stock.code}</p>
+                <p className="text-xs text-gray-600">Length: {stock.length}</p>
+                <div className="flex justify-between items-center">
+                  <span className="text-xs text-gray-600">Quantity:</span>
+                  <span className={`font-bold text-lg ${stock.quantity < 50 ? 'text-red-600' : 'text-green-600'}`}>
+                    {stock.quantity}
+                  </span>
                 </div>
               </div>
             </CardContent>
           </Card>
         ))}
       </div>
+
+      {/* Edit Dialog */}
+      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+        <DialogContent className="w-[95vw] max-w-md">
+          <DialogHeader>
+            <DialogTitle>Edit Stock</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="edit-stock-name">Stock Name</Label>
+              <Input
+                id="edit-stock-name"
+                value={editingStock?.name || ''}
+                onChange={(e) => setEditingStock(prev => prev ? { ...prev, name: e.target.value } : null)}
+                placeholder="Steel Rebar"
+              />
+            </div>
+            <div>
+              <Label htmlFor="edit-stock-code">Stock Code</Label>
+              <Input
+                id="edit-stock-code"
+                value={editingStock?.code || ''}
+                onChange={(e) => setEditingStock(prev => prev ? { ...prev, code: e.target.value } : null)}
+                placeholder="SR001"
+              />
+            </div>
+            <div>
+              <Label htmlFor="edit-stock-length">Stock Length</Label>
+              <select
+                id="edit-stock-length"
+                className="w-full border rounded-md py-2 px-3"
+                value={editingStock?.length || '16ft'}
+                onChange={(e) => setEditingStock(prev => prev ? { ...prev, length: e.target.value as '16ft' | '12ft' } : null)}
+              >
+                <option value="16ft">16ft</option>
+                <option value="12ft">12ft</option>
+              </select>
+            </div>
+            <div>
+              <Label htmlFor="edit-stock-quantity">Stock Quantity</Label>
+              <Input
+                id="edit-stock-quantity"
+                type="number"
+                value={editingStock?.quantity || 0}
+                onChange={(e) => setEditingStock(prev => prev ? { ...prev, quantity: parseInt(e.target.value) || 0 } : null)}
+                placeholder="100"
+              />
+            </div>
+            <Button onClick={handleEditStock} className="w-full">Update Stock</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

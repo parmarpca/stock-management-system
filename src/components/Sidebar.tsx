@@ -1,18 +1,17 @@
 
 import { Package, Users, ShoppingCart, BarChart3 } from 'lucide-react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 
-interface SidebarProps {
-  activeTab: string;
-  setActiveTab: (tab: string) => void;
-}
+const Sidebar = () => {
+  const navigate = useNavigate();
+  const location = useLocation();
 
-const Sidebar = ({ activeTab, setActiveTab }: SidebarProps) => {
   const menuItems = [
-    { id: 'dashboard', label: 'Dashboard', icon: BarChart3 },
-    { id: 'stock', label: 'Stock Management', icon: Package },
-    { id: 'customers', label: 'Customers', icon: Users },
-    { id: 'orders', label: 'Orders', icon: ShoppingCart },
+    { id: '/', label: 'Dashboard', icon: BarChart3, path: '/' },
+    { id: 'stock', label: 'Stock Management', icon: Package, path: '/stock' },
+    { id: 'customers', label: 'Customers', icon: Users, path: '/customers' },
+    { id: 'orders', label: 'Orders', icon: ShoppingCart, path: '/orders' },
   ];
 
   return (
@@ -26,13 +25,14 @@ const Sidebar = ({ activeTab, setActiveTab }: SidebarProps) => {
       <nav className="flex-1 overflow-y-auto">
         {menuItems.map((item) => {
           const Icon = item.icon;
+          const isActive = location.pathname === item.path;
           return (
             <button
               key={item.id}
-              onClick={() => setActiveTab(item.id)}
+              onClick={() => navigate(item.path)}
               className={cn(
                 "w-full flex items-center space-x-3 px-3 lg:px-6 py-3 text-left hover:bg-slate-800 transition-colors",
-                activeTab === item.id && "bg-blue-600 border-r-2 border-blue-400"
+                isActive && "bg-blue-600 border-r-2 border-blue-400"
               )}
               title={item.label}
             >
