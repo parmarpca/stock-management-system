@@ -301,7 +301,7 @@ const SlipManager = ({ stocks, customers, slips, onSlipCreate, setCustomers }: S
                   <SelectValue placeholder="All customers" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All customers</SelectItem>
+                  <SelectItem value="all">All customers</SelectItem>
                   {customers.map(customer => (
                     <SelectItem key={customer.id} value={customer.id}>
                       {customer.name}
