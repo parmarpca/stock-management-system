@@ -405,8 +405,18 @@ const StockOverview = ({
   return (
     <div className="space-y-4 lg:space-y-6">
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-        <h2 className="text-xl lg:text-2xl font-bold">Stock Overview</h2>
-
+        {/* <h2 className="text-xl lg:text-2xl font-bold">Stock Overview</h2> */}
+        {/* Search */}
+        <div className="relative max-w-md">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+          <Input
+            placeholder="Search stocks..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="pl-10 w-full"
+            autoComplete="off"
+          />
+        </div>
         <div className="flex items-center gap-4">
           {/* Filter Toggle */}
           {onFilterChange && (
@@ -715,18 +725,6 @@ const StockOverview = ({
             </DialogContent>
           </Dialog>
         </div>
-      </div>
-
-      {/* Search */}
-      <div className="relative max-w-md">
-        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-        <Input
-          placeholder="Search stocks..."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          className="pl-10 w-full"
-          autoComplete="off"
-        />
       </div>
 
       {/* Stock Grid */}

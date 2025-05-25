@@ -11,6 +11,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { useNavigate } from "react-router-dom";
 
 interface Customer {
   id: string;
@@ -28,7 +29,7 @@ const CustomerList = ({ customers }: CustomerListProps) => {
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
-
+  const navigate = useNavigate();
   const [newCustomer, setNewCustomer] = useState({
     name: "",
   });
@@ -78,9 +79,9 @@ const CustomerList = ({ customers }: CustomerListProps) => {
 
   return (
     <div className="space-y-4 lg:space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <h2 className="text-xl lg:text-2xl font-bold">Customer Management</h2>
-        {/* <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
+      {/* <div className="flex flex-col sm:flex-row sm:items-center justify-end gap-4"> */}
+      {/* <h2 className="text-xl lg:text-2xl font-bold">Customer Management</h2> */}
+      {/* <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
           <DialogTrigger asChild>
             <Button className="flex items-center space-x-2">
               <Plus className="h-4 w-4" />
@@ -106,7 +107,7 @@ const CustomerList = ({ customers }: CustomerListProps) => {
             </div>
           </DialogContent>
         </Dialog> */}
-      </div>
+      {/* </div> */}
 
       <div className="mb-4">
         <Input
@@ -119,7 +120,11 @@ const CustomerList = ({ customers }: CustomerListProps) => {
 
       <div className="grid gap-3 lg:gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
         {filteredCustomers.map((customer) => (
-          <Card key={customer.id}>
+          <Card
+            key={customer.id}
+            className="cursor-pointer"
+            onClick={() => navigate(`/orders?customer=${customer.id}`)}
+          >
             <CardContent className="p-4 lg:p-6">
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-3 lg:space-x-4 flex-1 min-w-0">

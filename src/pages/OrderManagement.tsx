@@ -2,6 +2,8 @@
 import Layout from "@/components/Layout";
 import OrderManager from "@/components/OrderManager";
 import { useStockData } from "@/hooks/useStockData";
+import { useEffect, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 
 const OrderManagement = () => {
   const {
@@ -16,6 +18,12 @@ const OrderManagement = () => {
     fetchCustomers,
   } = useStockData();
   const lowStockCount = stocks.filter((stock) => stock.quantity < 50).length;
+  const [searchTerm, setSearchTerm] = useState("");
+  const [searchParams] = useSearchParams();
+  const filterCustomer = searchParams.get("customer");
+  useEffect(() => {
+    setSearchTerm(filterCustomer || "all");
+  }, [filterCustomer]);
 
   if (loading) {
     return (
@@ -38,6 +46,8 @@ const OrderManagement = () => {
         onOrderDelete={deleteOrder}
         onCustomerCreate={createCustomer}
         fetchCustomers={fetchCustomers}
+        filterCustomer={searchTerm}
+        setFilterCustomer={setSearchTerm}
       />
     </Layout>
   );

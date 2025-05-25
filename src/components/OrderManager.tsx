@@ -47,6 +47,8 @@ interface OrderManagerProps {
   onOrderDelete: (orderId: string) => Promise<any>;
   onCustomerCreate: (name: string) => Promise<any>;
   fetchCustomers: () => Promise<void>;
+  filterCustomer: string;
+  setFilterCustomer: (filterCustomer: string) => void;
 }
 
 interface OrderItemForm {
@@ -66,6 +68,8 @@ const OrderManager = ({
   onOrderDelete,
   onCustomerCreate,
   fetchCustomers,
+  filterCustomer,
+  setFilterCustomer,
 }: OrderManagerProps) => {
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
@@ -96,7 +100,7 @@ const OrderManager = ({
   const [selectedStockIndex, setSelectedStockIndex] = useState(-1);
 
   // Filter states
-  const [filterCustomer, setFilterCustomer] = useState("");
+  //   const [filterCustomer, setFilterCustomer] = useState("");
   const [filterDateFrom, setFilterDateFrom] = useState("");
   const [filterDateTo, setFilterDateTo] = useState("");
 
@@ -112,7 +116,9 @@ const OrderManager = ({
 
   const filteredOrders = orders.filter((order) => {
     const matchesCustomer =
-      !filterCustomer || order.customer_id === filterCustomer;
+      !filterCustomer ||
+      order.customer_id === filterCustomer ||
+      filterCustomer === "all";
     const matchesDateFrom =
       !filterDateFrom || order.order_date >= filterDateFrom;
     const matchesDateTo = !filterDateTo || order.order_date <= filterDateTo;
@@ -553,8 +559,8 @@ const OrderManager = ({
 
   return (
     <div className="space-y-4 lg:space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <h2 className="text-xl lg:text-2xl font-bold">Order Management</h2>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-end gap-4">
+        {/* <h2 className="text-xl lg:text-2xl font-bold">Order Management</h2> */}
         <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
           <DialogTrigger asChild>
             <Button className="flex items-center space-x-2">
@@ -1006,10 +1012,10 @@ const OrderManager = ({
               <Label htmlFor="filter-customer">Customer</Label>
               <Select value={filterCustomer} onValueChange={setFilterCustomer}>
                 <SelectTrigger>
-                  <SelectValue placeholder="All customers" />
+                  <SelectValue placeholder="All Customers" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All customers</SelectItem>
+                  <SelectItem value="all">All Customers</SelectItem>
                   {customers.map((customer) => (
                     <SelectItem key={customer.id} value={customer.id}>
                       {customer.name}
@@ -1057,20 +1063,12 @@ const OrderManager = ({
                       <h3 className="font-semibold text-lg">
                         {order.customer_name}
                       </h3>
-                      {order.color_code && (
-                        <Badge
-                          variant="secondary"
-                          className="bg-blue-100 text-blue-800"
-                        >
-                          Color: {order.color_code}
-                        </Badge>
-                      )}
                     </div>
                     <div className="flex items-center gap-4 mb-3">
-                      <p className="text-sm text-gray-600">
+                      {/* <p className="text-sm text-gray-600">
                         <span className="font-medium">Order ID:</span>{" "}
                         {order.id.slice(-8)}
-                      </p>
+                      </p> */}
                       <p className="text-sm text-gray-600">
                         <span className="font-medium">Date:</span>{" "}
                         {order.order_date}
@@ -1083,18 +1081,25 @@ const OrderManager = ({
                       {order.order_items?.map((item, index) => (
                         <div
                           key={index}
-                          className="flex items-center justify-between bg-gray-50 p-2 rounded text-sm"
+                          className="flex items-center justify-start gap-4 bg-gray-50 p-2 rounded text-sm"
                         >
-                          <div className="flex-1">
+                          <div className="">
                             <span className="font-medium">
-                              {item.stock_name}
+                              ({item.stock_code || "N/A"}) {item.stock_name}
                             </span>
                             <span className="text-gray-600 ml-2">
-                              ({item.stock_code || "N/A"}) -{" "}
-                              {item.stock_length || "N/A"}
+                              - {item.stock_length || "N/A"}
                             </span>
                           </div>
                           <div className="flex items-center gap-2">
+                            {order.color_code && (
+                              <Badge
+                                variant="secondary"
+                                className="bg-blue-100 text-blue-800"
+                              >
+                                Color: {order.color_code}
+                              </Badge>
+                            )}
                             <Badge
                               variant="outline"
                               className="bg-green-50 text-green-700 border-green-200"
