@@ -1,280 +1,153 @@
-import { useState, useEffect } from 'react';
-import { Package, Users, FileText, AlertTriangle, Plus } from 'lucide-react';
+
+import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { Package, Users, ShoppingCart, AlertTriangle } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import StockOverview from '@/components/StockOverview';
-import CustomerList from '@/components/CustomerList';
-import SlipManager from '@/components/SlipManager';
-import LoginForm from '@/components/LoginForm';
-import Sidebar from '@/components/Sidebar';
-
-// Mock data structures
-interface Stock {
-  id: string;
-  name: string;
-  code: string;
-  length: '16ft' | '12ft';
-  quantity: number;
-  created_at: string;
-  updated_at: string;
-}
-
-interface Customer {
-  id: string;
-  name: string;
-  color_code: string;
-  created_at: string;
-}
-
-interface Slip {
-  id: string;
-  customer_id: string;
-  stock_id: string;
-  length: '16ft' | '12ft';
-  pieces_used: number;
-  date: string;
-  customer_name?: string;
-  stock_name?: string;
-}
+import Layout from '@/components/Layout';
+import { useStockData } from '@/hooks/useStockData';
 
 const Index = () => {
-  const [activeTab, setActiveTab] = useState('dashboard');
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [showLowStockOnly, setShowLowStockOnly] = useState(false);
+  const navigate = useNavigate();
+  const { stocks, customers, slips } = useStockData();
   
-  const [stocks, setStocks] = useState<Stock[]>([
-    {
-      id: '1',
-      name: 'Steel Rebar',
-      code: 'SR001',
-      length: '16ft',
-      quantity: 25,
-      created_at: '2024-01-15',
-      updated_at: '2024-05-25'
-    },
-    {
-      id: '2',
-      name: 'Steel Rebar',
-      code: 'SR002',
-      length: '12ft',
-      quantity: 75,
-      created_at: '2024-01-15',
-      updated_at: '2024-05-25'
-    },
-    {
-      id: '3',
-      name: 'Iron Rod',
-      code: 'IR001',
-      length: '16ft',
-      quantity: 15,
-      created_at: '2024-02-10',
-      updated_at: '2024-05-25'
-    },
-    {
-      id: '4',
-      name: 'Aluminum Pipe',
-      code: 'AP001',
-      length: '12ft',
-      quantity: 120,
-      created_at: '2024-03-05',
-      updated_at: '2024-05-25'
-    }
-  ]);
-
-  const [customers, setCustomers] = useState<Customer[]>([
-    {
-      id: '1',
-      name: 'ABC Construction',
-      color_code: 'Blue',
-      created_at: '2024-01-10'
-    },
-    {
-      id: '2',
-      name: 'XYZ Builders',
-      color_code: 'Red',
-      created_at: '2024-02-15'
-    },
-    {
-      id: '3',
-      name: 'Metro Infrastructure',
-      color_code: 'Green',
-      created_at: '2024-03-20'
-    }
-  ]);
-
-  const [slips, setSlips] = useState<Slip[]>([
-    {
-      id: '1',
-      customer_id: '1',
-      stock_id: '1',
-      length: '16ft',
-      pieces_used: 10,
-      date: '2024-05-24',
-      customer_name: 'ABC Construction',
-      stock_name: 'Steel Rebar'
-    },
-    {
-      id: '2',
-      customer_id: '2',
-      stock_id: '2',
-      length: '12ft',
-      pieces_used: 5,
-      date: '2024-05-23',
-      customer_name: 'XYZ Builders',
-      stock_name: 'Steel Rebar'
-    }
-  ]);
-
-  // Calculate statistics
-  const lowStockCount = stocks.filter(stock => stock.quantity < 50).length;
-  const totalStockItems = stocks.length;
+  const lowStockItems = stocks.filter(stock => stock.quantity < 50);
+  const lowStockCount = lowStockItems.length;
+  
+  const totalStockValue = stocks.reduce((total, stock) => total + stock.quantity, 0);
   const totalCustomers = customers.length;
-  const todaySlips = slips.filter(slip => slip.date === new Date().toISOString().split('T')[0]).length;
-
-  const handleSlipCreation = (newSlip: Omit<Slip, 'id'>) => {
-    const slip: Slip = {
-      ...newSlip,
-      id: Date.now().toString(),
-    };
-    
-    // Update stock quantity
-    setStocks(prevStocks => 
-      prevStocks.map(stock => 
-        stock.id === newSlip.stock_id 
-          ? { ...stock, quantity: stock.quantity - newSlip.pieces_used, updated_at: new Date().toISOString().split('T')[0] }
-          : stock
-      )
-    );
-    
-    setSlips(prevSlips => [slip, ...prevSlips]);
-  };
-
-  const handleOrderCreation = (orderData: any) => {
-    handleSlipCreation(orderData);
-  };
-
-  const handleLowStockClick = () => {
-    setActiveTab('stock');
-    setShowLowStockOnly(true);
-  };
-
-  const handleTotalStockClick = () => {
-    setActiveTab('stock');
-    setShowLowStockOnly(false);
-  };
-
-  if (!isLoggedIn) {
-    return <LoginForm onLogin={() => setIsLoggedIn(true)} />;
-  }
-
-  const renderDashboard = () => (
-    <div className="space-y-4 lg:space-y-6">
-      {/* Stats Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4">
-        <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={handleTotalStockClick}>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-xs lg:text-sm font-medium">Total Stock Items</CardTitle>
-            <Package className="h-3 w-3 lg:h-4 lg:w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-lg lg:text-2xl font-bold">{totalStockItems}</div>
-          </CardContent>
-        </Card>
-        
-        <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={handleLowStockClick}>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-xs lg:text-sm font-medium">Low Stock Alerts</CardTitle>
-            <AlertTriangle className="h-3 w-3 lg:h-4 lg:w-4 text-red-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-lg lg:text-2xl font-bold text-red-600">{lowStockCount}</div>
-          </CardContent>
-        </Card>
-        
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-xs lg:text-sm font-medium">Total Customers</CardTitle>
-            <Users className="h-3 w-3 lg:h-4 lg:w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-lg lg:text-2xl font-bold">{totalCustomers}</div>
-          </CardContent>
-        </Card>
-        
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-xs lg:text-sm font-medium">Today's Orders</CardTitle>
-            <FileText className="h-3 w-3 lg:h-4 lg:w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-lg lg:text-2xl font-bold">{todaySlips}</div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Stock Overview */}
-      <StockOverview stocks={stocks} setStocks={setStocks} showLowStockOnly={false} />
-
-      {/* Recent Activity */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-lg lg:text-xl">Recent Orders</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-3 lg:space-y-4">
-            {slips.slice(0, 5).map((slip) => (
-              <div key={slip.id} className="flex flex-col sm:flex-row sm:items-center justify-between p-3 bg-gray-50 rounded-lg gap-2">
-                <div className="flex-1">
-                  <p className="font-medium text-sm lg:text-base">{slip.customer_name}</p>
-                  <p className="text-xs lg:text-sm text-gray-600">{slip.stock_name} - {slip.length}</p>
-                </div>
-                <div className="text-left sm:text-right">
-                  <p className="font-medium text-sm lg:text-base">{slip.pieces_used} pieces</p>
-                  <p className="text-xs lg:text-sm text-gray-600">{slip.date}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
-    </div>
-  );
+  const totalOrders = slips.length;
 
   return (
-    <div className="min-h-screen bg-gray-50 flex">
-      <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} />
-      
-      <div className="flex-1 flex flex-col min-w-0 ml-16 lg:ml-0">
-        <header className="bg-white shadow-sm border-b px-3 lg:px-6 py-3 lg:py-4 flex-shrink-0 sticky top-0 z-20">
-          <div className="flex items-center justify-between">
-            <h1 className="text-lg lg:text-2xl font-bold text-gray-900 truncate">
-              Factory Stock Management
-            </h1>
-            <div className="flex items-center space-x-2">
-              {lowStockCount > 0 && (
-                <Badge 
-                  variant="destructive" 
-                  className="flex items-center space-x-1 cursor-pointer text-xs"
-                  onClick={handleLowStockClick}
-                >
-                  <AlertTriangle className="h-3 w-3" />
-                  <span className="hidden sm:inline">{lowStockCount} Low Stock</span>
-                  <span className="sm:hidden">{lowStockCount}</span>
-                </Badge>
-              )}
-            </div>
-          </div>
-        </header>
+    <Layout title="Dashboard" lowStockCount={lowStockCount}>
+      <div className="space-y-6">
+        {/* Overview Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <Card className="cursor-pointer hover:bg-gray-50" onClick={() => navigate('/stock')}>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Total Stock Items</CardTitle>
+              <Package className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{stocks.length}</div>
+              <p className="text-xs text-muted-foreground">
+                {totalStockValue} total pieces
+              </p>
+            </CardContent>
+          </Card>
 
-        <main className="flex-1 p-3 lg:p-6 overflow-auto">
-          {activeTab === 'dashboard' && renderDashboard()}
-          {activeTab === 'stock' && <StockOverview stocks={stocks} setStocks={setStocks} showLowStockOnly={showLowStockOnly} />}
-          {activeTab === 'customers' && <CustomerList customers={customers} setCustomers={setCustomers} />}
-          {activeTab === 'orders' && <SlipManager stocks={stocks} customers={customers} slips={slips} onSlipCreate={handleSlipCreation} setCustomers={setCustomers} />}
-        </main>
+          <Card className="cursor-pointer hover:bg-gray-50" onClick={() => navigate('/customers')}>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Total Customers</CardTitle>
+              <Users className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{totalCustomers}</div>
+              <p className="text-xs text-muted-foreground">
+                Active customers
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card className="cursor-pointer hover:bg-gray-50" onClick={() => navigate('/orders')}>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Total Orders</CardTitle>
+              <ShoppingCart className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{totalOrders}</div>
+              <p className="text-xs text-muted-foreground">
+                This month
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card className="cursor-pointer hover:bg-gray-50" onClick={() => navigate('/stock?filter=low')}>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Low Stock Alert</CardTitle>
+              <AlertTriangle className="h-4 w-4 text-red-500" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-red-600">{lowStockCount}</div>
+              <p className="text-xs text-muted-foreground">
+                Items below 50 pieces
+              </p>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Quick Actions */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Quick Actions</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <Button 
+                onClick={() => navigate('/orders')} 
+                className="w-full"
+                size="lg"
+              >
+                <ShoppingCart className="mr-2 h-4 w-4" />
+                Create New Order
+              </Button>
+              <Button 
+                onClick={() => navigate('/customers')} 
+                variant="outline" 
+                className="w-full"
+                size="lg"
+              >
+                <Users className="mr-2 h-4 w-4" />
+                Add Customer
+              </Button>
+              <Button 
+                onClick={() => navigate('/stock')} 
+                variant="outline" 
+                className="w-full"
+                size="lg"
+              >
+                <Package className="mr-2 h-4 w-4" />
+                Manage Stock
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Low Stock Alert */}
+        {lowStockCount > 0 && (
+          <Card className="border-red-200 bg-red-50">
+            <CardHeader>
+              <CardTitle className="text-red-800 flex items-center">
+                <AlertTriangle className="mr-2 h-5 w-5" />
+                Low Stock Alert
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-red-700 mb-4">
+                You have {lowStockCount} item(s) with low stock levels.
+              </p>
+              <div className="space-y-2">
+                {lowStockItems.slice(0, 3).map((item) => (
+                  <div key={item.id} className="flex justify-between items-center bg-white p-2 rounded">
+                    <span className="font-medium">{item.name} ({item.code})</span>
+                    <span className="text-red-600 font-bold">{item.quantity} pieces</span>
+                  </div>
+                ))}
+                {lowStockCount > 3 && (
+                  <Button 
+                    variant="outline" 
+                    onClick={() => navigate('/stock?filter=low')}
+                    className="w-full mt-2"
+                  >
+                    View All {lowStockCount} Low Stock Items
+                  </Button>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        )}
       </div>
-    </div>
+    </Layout>
   );
 };
 

@@ -1,5 +1,6 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { supabase } from '@/integrations/supabase/client';
 
 export interface Stock {
   id: string;
@@ -111,6 +112,12 @@ export const useStockData = () => {
       color_code: 'Red'
     }
   ]);
+
+  // TODO: Replace with Supabase data fetching
+  useEffect(() => {
+    // This is where we'll add Supabase data fetching once tables are created
+    console.log('Supabase connected, ready for data migration');
+  }, []);
 
   return {
     stocks,

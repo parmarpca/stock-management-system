@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { ShoppingCart, Plus, Printer, Edit } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -21,7 +22,6 @@ interface Stock {
 interface Customer {
   id: string;
   name: string;
-  color_code: string;
   created_at: string;
 }
 
@@ -114,7 +114,6 @@ const SlipManager = ({ stocks, customers, slips, onSlipCreate, setCustomers }: S
       customer = {
         id: Date.now().toString(),
         name: customerName,
-        color_code: '',
         created_at: new Date().toISOString().split('T')[0]
       };
       setCustomers(prev => [...prev, customer!]);
@@ -302,7 +301,7 @@ const SlipManager = ({ stocks, customers, slips, onSlipCreate, setCustomers }: S
                   <SelectValue placeholder="All customers" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All customers</SelectItem>
+                  <SelectItem value="">All customers</SelectItem>
                   {customers.map(customer => (
                     <SelectItem key={customer.id} value={customer.id}>
                       {customer.name}
