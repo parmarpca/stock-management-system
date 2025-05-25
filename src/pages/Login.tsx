@@ -96,9 +96,9 @@ const Login = () => {
             </div>
           </div>
 
-          <div className="mt-4 text-center text-sm text-gray-600">
+          {/* <div className="mt-4 text-center text-sm text-gray-600">
             <p>Demo Admin: projects.smit@gmail.com / password123</p>
-          </div>
+          </div> */}
         </CardContent>
       </Card>
     </div>
