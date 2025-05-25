@@ -15,7 +15,6 @@ interface Stock {
   code: string;
   length: '16ft' | '12ft';
   quantity: number;
-  location?: string;
   created_at: string;
   updated_at: string;
 }
@@ -202,7 +201,7 @@ const SlipManager = ({ stocks, customers, slips, onSlipCreate }: SlipManagerProp
                   <SelectValue placeholder="All customers" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All customers</SelectItem>
+                  <SelectItem value="all">All customers</SelectItem>
                   {customers.map(customer => (
                     <SelectItem key={customer.id} value={customer.id}>
                       {customer.name}

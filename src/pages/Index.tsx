@@ -7,6 +7,8 @@ import { Badge } from '@/components/ui/badge';
 import StockOverview from '@/components/StockOverview';
 import CustomerList from '@/components/CustomerList';
 import SlipManager from '@/components/SlipManager';
+import OrderForm from '@/components/OrderForm';
+import LoginForm from '@/components/LoginForm';
 import Sidebar from '@/components/Sidebar';
 
 // Mock data structures
@@ -16,7 +18,6 @@ interface Stock {
   code: string;
   length: '16ft' | '12ft';
   quantity: number;
-  location?: string;
   created_at: string;
   updated_at: string;
 }
@@ -41,6 +42,9 @@ interface Slip {
 
 const Index = () => {
   const [activeTab, setActiveTab] = useState('dashboard');
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [showLowStockOnly, setShowLowStockOnly] = useState(false);
+  
   const [stocks, setStocks] = useState<Stock[]>([
     {
       id: '1',
@@ -48,7 +52,6 @@ const Index = () => {
       code: 'SR001',
       length: '16ft',
       quantity: 25,
-      location: 'Warehouse A',
       created_at: '2024-01-15',
       updated_at: '2024-05-25'
     },
@@ -58,7 +61,6 @@ const Index = () => {
       code: 'SR002',
       length: '12ft',
       quantity: 75,
-      location: 'Warehouse A',
       created_at: '2024-01-15',
       updated_at: '2024-05-25'
     },
@@ -68,7 +70,6 @@ const Index = () => {
       code: 'IR001',
       length: '16ft',
       quantity: 15,
-      location: 'Warehouse B',
       created_at: '2024-02-10',
       updated_at: '2024-05-25'
     },
@@ -78,7 +79,6 @@ const Index = () => {
       code: 'AP001',
       length: '12ft',
       quantity: 120,
-      location: 'Warehouse C',
       created_at: '2024-03-05',
       updated_at: '2024-05-25'
     }
@@ -152,11 +152,29 @@ const Index = () => {
     setSlips(prevSlips => [slip, ...prevSlips]);
   };
 
+  const handleOrderCreation = (orderData: any) => {
+    handleSlipCreation(orderData);
+  };
+
+  const handleLowStockClick = () => {
+    setActiveTab('stock');
+    setShowLowStockOnly(true);
+  };
+
+  const handleTotalStockClick = () => {
+    setActiveTab('stock');
+    setShowLowStockOnly(false);
+  };
+
+  if (!isLoggedIn) {
+    return <LoginForm onLogin={() => setIsLoggedIn(true)} />;
+  }
+
   const renderDashboard = () => (
     <div className="space-y-6">
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={handleTotalStockClick}>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Stock Items</CardTitle>
             <Package className="h-4 w-4 text-muted-foreground" />
@@ -166,7 +184,7 @@ const Index = () => {
           </CardContent>
         </Card>
         
-        <Card>
+        <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={handleLowStockClick}>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Low Stock Alerts</CardTitle>
             <AlertTriangle className="h-4 w-4 text-red-500" />
@@ -198,7 +216,7 @@ const Index = () => {
       </div>
 
       {/* Stock Overview */}
-      <StockOverview stocks={stocks} setStocks={setStocks} />
+      <StockOverview stocks={stocks} setStocks={setStocks} showLowStockOnly={false} />
 
       {/* Recent Activity */}
       <Card>
@@ -229,28 +247,34 @@ const Index = () => {
     <div className="min-h-screen bg-gray-50 flex">
       <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} />
       
-      <div className="flex-1 flex flex-col">
-        <header className="bg-white shadow-sm border-b px-6 py-4">
+      <div className="flex-1 flex flex-col min-w-0">
+        <header className="bg-white shadow-sm border-b px-4 lg:px-6 py-4 flex-shrink-0">
           <div className="flex items-center justify-between">
-            <h1 className="text-2xl font-bold text-gray-900">
+            <h1 className="text-xl lg:text-2xl font-bold text-gray-900">
               Factory Stock Management System
             </h1>
             <div className="flex items-center space-x-2">
               {lowStockCount > 0 && (
-                <Badge variant="destructive" className="flex items-center space-x-1">
+                <Badge 
+                  variant="destructive" 
+                  className="flex items-center space-x-1 cursor-pointer"
+                  onClick={handleLowStockClick}
+                >
                   <AlertTriangle className="h-3 w-3" />
-                  <span>{lowStockCount} Low Stock</span>
+                  <span className="hidden sm:inline">{lowStockCount} Low Stock</span>
+                  <span className="sm:hidden">{lowStockCount}</span>
                 </Badge>
               )}
             </div>
           </div>
         </header>
 
-        <main className="flex-1 p-6">
+        <main className="flex-1 p-4 lg:p-6 overflow-auto">
           {activeTab === 'dashboard' && renderDashboard()}
-          {activeTab === 'stock' && <StockOverview stocks={stocks} setStocks={setStocks} />}
+          {activeTab === 'stock' && <StockOverview stocks={stocks} setStocks={setStocks} showLowStockOnly={showLowStockOnly} />}
           {activeTab === 'customers' && <CustomerList customers={customers} setCustomers={setCustomers} />}
           {activeTab === 'slips' && <SlipManager stocks={stocks} customers={customers} slips={slips} onSlipCreate={handleSlipCreation} />}
+          {activeTab === 'orders' && <OrderForm stocks={stocks} customers={customers} setCustomers={setCustomers} onOrderCreate={handleOrderCreation} />}
         </main>
       </div>
     </div>

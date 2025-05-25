@@ -1,6 +1,6 @@
 
 import { useState } from 'react';
-import { Package, Plus, Edit, AlertTriangle } from 'lucide-react';
+import { Package, Plus, Edit, AlertTriangle, Filter } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -15,7 +15,6 @@ interface Stock {
   code: string;
   length: '16ft' | '12ft';
   quantity: number;
-  location?: string;
   created_at: string;
   updated_at: string;
 }
@@ -23,36 +22,80 @@ interface Stock {
 interface StockOverviewProps {
   stocks: Stock[];
   setStocks: React.Dispatch<React.SetStateAction<Stock[]>>;
+  showLowStockOnly?: boolean;
 }
 
-const StockOverview = ({ stocks, setStocks }: StockOverviewProps) => {
+const StockOverview = ({ stocks, setStocks, showLowStockOnly = false }: StockOverviewProps) => {
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [editingStock, setEditingStock] = useState<Stock | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
+  const [filterLowStock, setFilterLowStock] = useState(showLowStockOnly);
+  const [quickCode, setQuickCode] = useState('');
 
   const [newStock, setNewStock] = useState({
     name: '',
     code: '',
     length: '16ft' as '16ft' | '12ft',
-    quantity: 0,
-    location: ''
+    quantity: 0
   });
 
-  const filteredStocks = stocks.filter(stock => 
-    stock.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    stock.code.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  // Auto-fill when code is entered
+  const existingStock = stocks.find(s => s.code.toLowerCase() === quickCode.toLowerCase());
+
+  const filteredStocks = stocks.filter(stock => {
+    const matchesSearch = stock.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         stock.code.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesLowStock = !filterLowStock || stock.quantity < 50;
+    return matchesSearch && matchesLowStock;
+  });
+
+  const handleQuickCodeChange = (code: string) => {
+    setQuickCode(code);
+    const found = stocks.find(s => s.code.toLowerCase() === code.toLowerCase());
+    if (found) {
+      setNewStock({
+        name: found.name,
+        code: found.code,
+        length: found.length,
+        quantity: 0
+      });
+    } else {
+      setNewStock(prev => ({ ...prev, code: code }));
+    }
+  };
+
+  const getCodeSuggestions = () => {
+    if (!newStock.code) return [];
+    return stocks.filter(s => 
+      s.code.toLowerCase().includes(newStock.code.toLowerCase()) ||
+      s.name.toLowerCase().includes(newStock.code.toLowerCase())
+    ).slice(0, 5);
+  };
 
   const handleAddStock = () => {
-    const stock: Stock = {
-      ...newStock,
-      id: Date.now().toString(),
-      created_at: new Date().toISOString().split('T')[0],
-      updated_at: new Date().toISOString().split('T')[0]
-    };
+    // Check if stock with this code already exists
+    const existingStockIndex = stocks.findIndex(s => s.code === newStock.code);
     
-    setStocks(prev => [...prev, stock]);
-    setNewStock({ name: '', code: '', length: '16ft', quantity: 0, location: '' });
+    if (existingStockIndex !== -1) {
+      // Update existing stock quantity
+      setStocks(prev => prev.map((stock, index) => 
+        index === existingStockIndex 
+          ? { ...stock, quantity: stock.quantity + newStock.quantity, updated_at: new Date().toISOString().split('T')[0] }
+          : stock
+      ));
+    } else {
+      // Add new stock
+      const stock: Stock = {
+        ...newStock,
+        id: Date.now().toString(),
+        created_at: new Date().toISOString().split('T')[0],
+        updated_at: new Date().toISOString().split('T')[0]
+      };
+      setStocks(prev => [...prev, stock]);
+    }
+    
+    setNewStock({ name: '', code: '', length: '16ft', quantity: 0 });
+    setQuickCode('');
     setIsAddDialogOpen(false);
   };
 
@@ -63,7 +106,7 @@ const StockOverview = ({ stocks, setStocks }: StockOverviewProps) => {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <h2 className="text-2xl font-bold">Stock Management</h2>
         <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
           <DialogTrigger asChild>
@@ -78,6 +121,21 @@ const StockOverview = ({ stocks, setStocks }: StockOverviewProps) => {
             </DialogHeader>
             <div className="space-y-4">
               <div>
+                <Label htmlFor="quick-code">Quick Code Entry</Label>
+                <Input
+                  id="quick-code"
+                  value={quickCode}
+                  onChange={(e) => handleQuickCodeChange(e.target.value)}
+                  placeholder="Enter stock code..."
+                />
+                {existingStock && (
+                  <p className="text-sm text-green-600 mt-1">
+                    Found: {existingStock.name} - Current quantity: {existingStock.quantity}
+                  </p>
+                )}
+              </div>
+              
+              <div>
                 <Label htmlFor="name">Name</Label>
                 <Input
                   id="name"
@@ -86,6 +144,7 @@ const StockOverview = ({ stocks, setStocks }: StockOverviewProps) => {
                   placeholder="Steel Rebar"
                 />
               </div>
+              
               <div>
                 <Label htmlFor="code">Code</Label>
                 <Input
@@ -94,7 +153,29 @@ const StockOverview = ({ stocks, setStocks }: StockOverviewProps) => {
                   onChange={(e) => setNewStock(prev => ({ ...prev, code: e.target.value }))}
                   placeholder="SR001"
                 />
+                {getCodeSuggestions().length > 0 && (
+                  <div className="mt-2 border rounded-md p-2 bg-gray-50">
+                    <p className="text-xs text-gray-600 mb-1">Suggestions:</p>
+                    {getCodeSuggestions().map(suggestion => (
+                      <button
+                        key={suggestion.id}
+                        className="block w-full text-left text-sm p-1 hover:bg-gray-200 rounded"
+                        onClick={() => {
+                          setNewStock({
+                            name: suggestion.name,
+                            code: suggestion.code,
+                            length: suggestion.length,
+                            quantity: 0
+                          });
+                        }}
+                      >
+                        {suggestion.code} - {suggestion.name}
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
+              
               <div>
                 <Label htmlFor="length">Length</Label>
                 <Select value={newStock.length} onValueChange={(value: '16ft' | '12ft') => setNewStock(prev => ({ ...prev, length: value }))}>
@@ -107,6 +188,7 @@ const StockOverview = ({ stocks, setStocks }: StockOverviewProps) => {
                   </SelectContent>
                 </Select>
               </div>
+              
               <div>
                 <Label htmlFor="quantity">Quantity</Label>
                 <Input
@@ -116,28 +198,31 @@ const StockOverview = ({ stocks, setStocks }: StockOverviewProps) => {
                   onChange={(e) => setNewStock(prev => ({ ...prev, quantity: parseInt(e.target.value) || 0 }))}
                 />
               </div>
-              <div>
-                <Label htmlFor="location">Location</Label>
-                <Input
-                  id="location"
-                  value={newStock.location}
-                  onChange={(e) => setNewStock(prev => ({ ...prev, location: e.target.value }))}
-                  placeholder="Warehouse A"
-                />
-              </div>
-              <Button onClick={handleAddStock} className="w-full">Add Stock</Button>
+              
+              <Button onClick={handleAddStock} className="w-full">
+                {existingStock ? 'Update Quantity' : 'Add Stock'}
+              </Button>
             </div>
           </DialogContent>
         </Dialog>
       </div>
 
-      <div className="mb-4">
+      <div className="flex flex-col sm:flex-row gap-4">
         <Input
           placeholder="Search by name or code..."
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
           className="max-w-md"
         />
+        
+        <Button
+          variant={filterLowStock ? "default" : "outline"}
+          onClick={() => setFilterLowStock(!filterLowStock)}
+          className="flex items-center space-x-2"
+        >
+          <Filter className="h-4 w-4" />
+          <span>Low Stock Only</span>
+        </Button>
       </div>
 
       <div className="grid gap-4">
@@ -150,7 +235,7 @@ const StockOverview = ({ stocks, setStocks }: StockOverviewProps) => {
                   <div>
                     <h3 className="font-semibold text-lg">{stock.name}</h3>
                     <p className="text-gray-600">Code: {stock.code} | Length: {stock.length}</p>
-                    {stock.location && <p className="text-sm text-gray-500">Location: {stock.location}</p>}
+                    <p className="text-sm text-gray-500">Updated: {stock.updated_at}</p>
                   </div>
                 </div>
                 
@@ -186,14 +271,6 @@ const StockOverview = ({ stocks, setStocks }: StockOverviewProps) => {
                               type="number"
                               value={editingStock.quantity}
                               onChange={(e) => setEditingStock(prev => prev ? ({ ...prev, quantity: parseInt(e.target.value) || 0 }) : null)}
-                            />
-                          </div>
-                          <div>
-                            <Label htmlFor="edit-location">Location</Label>
-                            <Input
-                              id="edit-location"
-                              value={editingStock.location || ''}
-                              onChange={(e) => setEditingStock(prev => prev ? ({ ...prev, location: e.target.value }) : null)}
                             />
                           </div>
                           <Button onClick={() => handleEditStock(editingStock)} className="w-full">
