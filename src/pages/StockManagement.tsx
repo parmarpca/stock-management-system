@@ -7,7 +7,8 @@ import { useStockData } from "@/hooks/useStockData";
 const StockManagement = () => {
   const [searchParams] = useSearchParams();
   const [showLowStockOnly, setShowLowStockOnly] = useState(false);
-  const { stocks, loading, createOrUpdateStock } = useStockData();
+  const { stocks, loading, createOrUpdateStock, deleteStock, fetchStocks } =
+    useStockData();
 
   useEffect(() => {
     const filter = searchParams.get("filter");
@@ -35,6 +36,8 @@ const StockManagement = () => {
         showLowStockOnly={showLowStockOnly}
         onFilterChange={setShowLowStockOnly}
         onStockCreate={createOrUpdateStock}
+        onStockDelete={deleteStock}
+        onRefresh={fetchStocks}
       />
     </Layout>
   );

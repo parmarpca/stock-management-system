@@ -7,6 +7,8 @@ import {
   Filter,
   History,
   Loader2,
+  Printer,
+  Trash2,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -54,6 +56,8 @@ interface StockOverviewProps {
     length: "16ft" | "12ft";
     quantity: number;
   }) => Promise<any>;
+  onStockDelete: (stockId: string) => Promise<any>;
+  onRefresh: () => Promise<void>;
 }
 
 const StockOverview = ({
@@ -61,6 +65,8 @@ const StockOverview = ({
   showLowStockOnly,
   onFilterChange,
   onStockCreate,
+  onStockDelete,
+  onRefresh,
 }: StockOverviewProps) => {
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isHistoryDialogOpen, setIsHistoryDialogOpen] = useState(false);
@@ -69,6 +75,8 @@ const StockOverview = ({
   const [selectedStock, setSelectedStock] = useState<Stock | null>(null);
   const [stockHistory, setStockHistory] = useState<StockHistory[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [editingStock, setEditingStock] = useState<Stock | null>(null);
 
   // Form states
   const [codeInput, setCodeInput] = useState("");
@@ -143,7 +151,15 @@ const StockOverview = ({
 
   // Handle keyboard navigation for code suggestions
   const handleCodeKeyDown = (e: React.KeyboardEvent) => {
-    if (!showCodeSuggestions || codeSuggestions.length === 0) return;
+    if (!showCodeSuggestions || codeSuggestions.length === 0) {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        // Move to next field
+        const nameInput = document.getElementById("stock-name");
+        if (nameInput) nameInput.focus();
+      }
+      return;
+    }
 
     switch (e.key) {
       case "ArrowDown":
@@ -160,6 +176,8 @@ const StockOverview = ({
         e.preventDefault();
         if (selectedCodeIndex >= 0) {
           handleCodeSelect(codeSuggestions[selectedCodeIndex]);
+        } else if (codeSuggestions.length > 0) {
+          handleCodeSelect(codeSuggestions[0]);
         }
         break;
       case "Escape":
@@ -226,6 +244,59 @@ const StockOverview = ({
     fetchStockHistory(stock.id);
   };
 
+  const handleEditStock = (stock: Stock) => {
+    setEditingStock(stock);
+    setNewStock({
+      name: stock.name,
+      code: stock.code,
+      length: stock.length,
+      quantity: stock.quantity,
+    });
+    setCodeInput(stock.code);
+    setIsEditDialogOpen(true);
+  };
+
+  const handleUpdateStock = async () => {
+    if (
+      !editingStock ||
+      !newStock.name.trim() ||
+      !newStock.code.trim() ||
+      newStock.quantity < 0
+    ) {
+      alert("Please fill all fields correctly");
+      return;
+    }
+
+    setIsAddingStock(true);
+    try {
+      const { data, error } = await supabase
+        .from("stocks")
+        .update({
+          name: newStock.name,
+          code: newStock.code,
+          length: newStock.length,
+          quantity: newStock.quantity,
+        })
+        .eq("id", editingStock.id)
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      // Refresh stocks
+      await onRefresh();
+      resetForm();
+      setIsEditDialogOpen(false);
+      setEditingStock(null);
+      alert("Stock updated successfully!");
+    } catch (error) {
+      console.error("Error updating stock:", error);
+      alert("Failed to update stock. Please try again.");
+    } finally {
+      setIsAddingStock(false);
+    }
+  };
+
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString("en-US", {
       year: "numeric",
@@ -249,6 +320,88 @@ const StockOverview = ({
     }
   };
 
+  const handleDeleteStock = async (stockId: string, stockName: string) => {
+    if (
+      !confirm(
+        `Are you sure you want to delete "${stockName}"? This action cannot be undone.`
+      )
+    )
+      return;
+
+    try {
+      await onStockDelete(stockId);
+      alert("Stock deleted successfully!");
+    } catch (error) {
+      console.error("Error deleting stock:", error);
+      alert("Failed to delete stock. Please try again.");
+    }
+  };
+
+  const handlePrintAllStocks = () => {
+    const sortedStocks = [...stocks].sort((a, b) =>
+      a.code.localeCompare(b.code)
+    );
+
+    const printContent = `
+      <div style="padding: 8px; font-family: Arial, sans-serif; font-size: 12px; line-height: 1.2;">
+        <div style="text-align: center; margin-bottom: 8px;">
+          <strong style="font-size: 14px;">STOCK INVENTORY REPORT</strong>
+        </div>
+        <div style="border-bottom: 1px solid #000; margin-bottom: 6px; padding-bottom: 4px;">
+          <div><strong>Date:</strong> ${new Date().toLocaleDateString()}</div>
+          <div><strong>Time:</strong> ${new Date().toLocaleTimeString()}</div>
+          <div><strong>Total Items:</strong> ${sortedStocks.length}</div>
+        </div>
+        <div style="margin-bottom: 6px;">
+          <div style="font-weight: bold; margin-bottom: 3px;">Stock Details:</div>
+          ${sortedStocks
+            .map(
+              (stock) => `
+            <div style="margin-bottom: 3px; border-bottom: 1px dotted #ccc; padding-bottom: 2px;">
+              <div style="font-weight: 500;">${stock.code} - ${stock.name}</div>
+              <div style="font-size: 10px; color: #666;">
+                Length: ${stock.length} | Quantity: ${stock.quantity} pcs
+                ${
+                  stock.quantity < 50
+                    ? ' | <span style="color: red;">LOW STOCK</span>'
+                    : ""
+                }
+              </div>
+            </div>
+          `
+            )
+            .join("")}
+        </div>
+        <div style="border-top: 1px solid #000; padding-top: 4px; text-align: center; font-size: 10px;">
+          Total Stock: ${sortedStocks.reduce(
+            (total, stock) => total + stock.quantity,
+            0
+          )} pieces
+        </div>
+      </div>
+    `;
+
+    const printWindow = window.open("", "_blank");
+    if (printWindow) {
+      printWindow.document.write(`
+        <html>
+          <head>
+            <title>Stock Inventory Report</title>
+            <style>
+              @media print {
+                body { margin: 0; }
+                @page { size: A4; margin: 10mm; }
+              }
+            </style>
+          </head>
+          <body>${printContent}</body>
+        </html>
+      `);
+      printWindow.document.close();
+      printWindow.print();
+    }
+  };
+
   return (
     <div className="space-y-4 lg:space-y-6">
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
@@ -269,6 +422,15 @@ const StockOverview = ({
             </div>
           )}
 
+          <Button
+            variant="outline"
+            onClick={handlePrintAllStocks}
+            className="flex items-center space-x-2"
+          >
+            <Printer className="h-4 w-4" />
+            <span>Print All</span>
+          </Button>
+
           <Dialog
             open={isAddDialogOpen}
             onOpenChange={(open) => {
@@ -282,11 +444,19 @@ const StockOverview = ({
                 <span>Add Stock</span>
               </Button>
             </DialogTrigger>
-            <DialogContent className="w-[95vw] max-w-md">
-              <DialogHeader>
-                <DialogTitle>Add New Stock</DialogTitle>
+            <DialogContent className="w-[95vw] max-w-md p-6">
+              <DialogHeader className="pb-4">
+                <DialogTitle className="text-xl font-semibold">
+                  Add New Stock
+                </DialogTitle>
               </DialogHeader>
-              <div className="space-y-4">
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  handleAddStock();
+                }}
+                className="space-y-4"
+              >
                 {/* Stock Code - First Field */}
                 <div className="relative">
                   <Label htmlFor="stock-code">Stock Code</Label>
@@ -382,7 +552,7 @@ const StockOverview = ({
                   <Input
                     id="stock-quantity"
                     type="number"
-                    value={newStock.quantity}
+                    value={newStock.quantity === 0 ? "" : newStock.quantity}
                     onChange={(e) =>
                       setNewStock((prev) => ({
                         ...prev,
@@ -421,7 +591,127 @@ const StockOverview = ({
                     )}
                   </Button>
                 </div>
-              </div>
+              </form>
+            </DialogContent>
+          </Dialog>
+
+          {/* Edit Stock Dialog */}
+          <Dialog
+            open={isEditDialogOpen}
+            onOpenChange={(open) => {
+              setIsEditDialogOpen(open);
+              if (!open) {
+                resetForm();
+                setEditingStock(null);
+              }
+            }}
+          >
+            <DialogContent className="w-[95vw] max-w-md p-6">
+              <DialogHeader className="pb-4">
+                <DialogTitle className="text-xl font-semibold">
+                  Edit Stock
+                </DialogTitle>
+              </DialogHeader>
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  handleUpdateStock();
+                }}
+                className="space-y-4"
+              >
+                {/* Stock Code */}
+                <div>
+                  <Label htmlFor="edit-stock-code">Stock Code</Label>
+                  <Input
+                    id="edit-stock-code"
+                    value={newStock.code}
+                    onChange={(e) =>
+                      setNewStock((prev) => ({ ...prev, code: e.target.value }))
+                    }
+                    placeholder="SR001"
+                    autoComplete="off"
+                    className="w-full"
+                  />
+                </div>
+
+                {/* Stock Name */}
+                <div>
+                  <Label htmlFor="edit-stock-name">Stock Name</Label>
+                  <Input
+                    id="edit-stock-name"
+                    value={newStock.name}
+                    onChange={(e) =>
+                      setNewStock((prev) => ({ ...prev, name: e.target.value }))
+                    }
+                    placeholder="Steel Rebar"
+                    autoComplete="off"
+                  />
+                </div>
+
+                {/* Stock Length */}
+                <div>
+                  <Label htmlFor="edit-stock-length">Stock Length</Label>
+                  <select
+                    id="edit-stock-length"
+                    title="Select stock length"
+                    className="w-full border rounded-md py-2 px-3"
+                    value={newStock.length}
+                    onChange={(e) =>
+                      setNewStock((prev) => ({
+                        ...prev,
+                        length: e.target.value as "16ft" | "12ft",
+                      }))
+                    }
+                  >
+                    <option value="16ft">16ft</option>
+                    <option value="12ft">12ft</option>
+                  </select>
+                </div>
+
+                {/* Stock Quantity */}
+                <div>
+                  <Label htmlFor="edit-stock-quantity">Stock Quantity</Label>
+                  <Input
+                    id="edit-stock-quantity"
+                    type="number"
+                    value={newStock.quantity === 0 ? "" : newStock.quantity}
+                    onChange={(e) =>
+                      setNewStock((prev) => ({
+                        ...prev,
+                        quantity: parseInt(e.target.value) || 0,
+                      }))
+                    }
+                    placeholder="100"
+                    autoComplete="off"
+                    min="0"
+                  />
+                </div>
+
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    onClick={() => setIsEditDialogOpen(false)}
+                    disabled={isAddingStock}
+                    className="flex-1"
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    onClick={handleUpdateStock}
+                    disabled={isAddingStock}
+                    className="flex-1"
+                  >
+                    {isAddingStock ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Updating...
+                      </>
+                    ) : (
+                      "Update Stock"
+                    )}
+                  </Button>
+                </div>
+              </form>
             </DialogContent>
           </Dialog>
         </div>
@@ -456,14 +746,32 @@ const StockOverview = ({
                     </Badge>
                   )}
                 </div>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => handleViewHistory(stock)}
-                  className="h-8 w-8 p-0"
-                >
-                  <History className="h-4 w-4" />
-                </Button>
+                <div className="flex gap-1">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleEditStock(stock)}
+                    className="h-8 w-8 p-0"
+                  >
+                    <Edit className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleViewHistory(stock)}
+                    className="h-8 w-8 p-0"
+                  >
+                    <History className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleDeleteStock(stock.id, stock.name)}
+                    className="h-8 w-8 p-0 text-red-600 hover:text-red-700"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
               </div>
 
               <div className="space-y-2">
@@ -505,9 +813,9 @@ const StockOverview = ({
 
       {/* Stock History Dialog */}
       <Dialog open={isHistoryDialogOpen} onOpenChange={setIsHistoryDialogOpen}>
-        <DialogContent className="w-[95vw] max-w-2xl max-h-[80vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>
+        <DialogContent className="w-[95vw] max-w-2xl max-h-[80vh] overflow-y-auto p-6">
+          <DialogHeader className="pb-4">
+            <DialogTitle className="text-xl font-semibold">
               Stock History - {selectedStock?.name} ({selectedStock?.code})
             </DialogTitle>
           </DialogHeader>

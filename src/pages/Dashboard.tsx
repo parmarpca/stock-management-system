@@ -8,8 +8,15 @@ import { useStockData } from "@/hooks/useStockData";
 
 const Dashboard = () => {
   const navigate = useNavigate();
-  const { stocks, customers, orders, loading, createOrUpdateStock } =
-    useStockData();
+  const {
+    stocks,
+    customers,
+    orders,
+    loading,
+    createOrUpdateStock,
+    deleteStock,
+    fetchStocks,
+  } = useStockData();
 
   const lowStockCount = stocks.filter((stock) => stock.quantity < 50).length;
   const totalStockItems = stocks.length;
@@ -108,6 +115,12 @@ const Dashboard = () => {
 
         {/* Stock Overview */}
         <StockOverview
+          onStockDelete={async (stockId) => {
+            await deleteStock(stockId);
+          }}
+          onRefresh={async () => {
+            await fetchStocks();
+          }}
           stocks={stocks}
           showLowStockOnly={false}
           onStockCreate={createOrUpdateStock}

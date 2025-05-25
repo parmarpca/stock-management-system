@@ -1,11 +1,16 @@
-
-import { useState } from 'react';
-import { Users, Plus, User, Edit } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { useState } from "react";
+import { Users, Plus, User, Edit } from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 
 interface Customer {
   id: string;
@@ -15,53 +20,53 @@ interface Customer {
 
 interface CustomerListProps {
   customers: Customer[];
-  setCustomers: React.Dispatch<React.SetStateAction<Customer[]>>;
+  // setCustomers: React.Dispatch<React.SetStateAction<Customer[]>>;
 }
 
-const CustomerList = ({ customers, setCustomers }: CustomerListProps) => {
+const CustomerList = ({ customers }: CustomerListProps) => {
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
-  const [searchTerm, setSearchTerm] = useState('');
+  const [searchTerm, setSearchTerm] = useState("");
   const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
 
   const [newCustomer, setNewCustomer] = useState({
-    name: ''
+    name: "",
   });
 
-  const filteredCustomers = customers.filter(customer => 
+  const filteredCustomers = customers.filter((customer) =>
     customer.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const handleAddCustomer = () => {
     if (!newCustomer.name.trim()) {
-      alert('Please enter customer name');
+      alert("Please enter customer name");
       return;
     }
 
     const customer: Customer = {
       ...newCustomer,
       id: Date.now().toString(),
-      created_at: new Date().toISOString().split('T')[0]
+      created_at: new Date().toISOString().split("T")[0],
     };
-    
-    setCustomers(prev => [...prev, customer]);
-    setNewCustomer({ name: '' });
+
+    // setCustomers(prev => [...prev, customer]);
+    setNewCustomer({ name: "" });
     setIsAddDialogOpen(false);
   };
 
   const handleEditCustomer = () => {
     if (!editingCustomer || !editingCustomer.name.trim()) {
-      alert('Please enter customer name');
+      alert("Please enter customer name");
       return;
     }
 
-    setCustomers(prev => 
-      prev.map(customer => 
-        customer.id === editingCustomer.id 
-          ? { ...customer, name: editingCustomer.name }
-          : customer
-      )
-    );
+    // setCustomers(prev =>
+    //   prev.map(customer =>
+    //     customer.id === editingCustomer.id
+    //       ? { ...customer, name: editingCustomer.name }
+    //       : customer
+    //   )
+    // );
     setEditingCustomer(null);
     setIsEditDialogOpen(false);
   };
@@ -75,7 +80,7 @@ const CustomerList = ({ customers, setCustomers }: CustomerListProps) => {
     <div className="space-y-4 lg:space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <h2 className="text-xl lg:text-2xl font-bold">Customer Management</h2>
-        <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
+        {/* <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
           <DialogTrigger asChild>
             <Button className="flex items-center space-x-2">
               <Plus className="h-4 w-4" />
@@ -100,7 +105,7 @@ const CustomerList = ({ customers, setCustomers }: CustomerListProps) => {
               <Button onClick={handleAddCustomer} className="w-full">Add Customer</Button>
             </div>
           </DialogContent>
-        </Dialog>
+        </Dialog> */}
       </div>
 
       <div className="mb-4">
@@ -122,18 +127,22 @@ const CustomerList = ({ customers, setCustomers }: CustomerListProps) => {
                     <User className="h-4 w-4 lg:h-6 lg:w-6 text-blue-600" />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <h3 className="font-semibold text-sm lg:text-lg truncate">{customer.name}</h3>
-                    <p className="text-xs lg:text-sm text-gray-500 mt-1">Added: {customer.created_at}</p>
+                    <h3 className="font-semibold text-sm lg:text-lg truncate">
+                      {customer.name}
+                    </h3>
+                    <p className="text-xs lg:text-sm text-gray-500 mt-1">
+                      Added: {customer.created_at}
+                    </p>
                   </div>
                 </div>
-                <Button 
+                {/* <Button 
                   variant="ghost" 
                   size="sm" 
                   onClick={() => openEditDialog(customer)}
                   className="flex-shrink-0 ml-2"
                 >
                   <Edit className="h-4 w-4" />
-                </Button>
+                </Button> */}
               </div>
             </CardContent>
           </Card>
@@ -151,13 +160,19 @@ const CustomerList = ({ customers, setCustomers }: CustomerListProps) => {
               <Label htmlFor="edit-customer-name">Customer Name</Label>
               <Input
                 id="edit-customer-name"
-                value={editingCustomer?.name || ''}
-                onChange={(e) => setEditingCustomer(prev => prev ? { ...prev, name: e.target.value } : null)}
+                value={editingCustomer?.name || ""}
+                onChange={(e) =>
+                  setEditingCustomer((prev) =>
+                    prev ? { ...prev, name: e.target.value } : null
+                  )
+                }
                 placeholder="ABC Construction"
                 className="w-full"
               />
             </div>
-            <Button onClick={handleEditCustomer} className="w-full">Update Customer</Button>
+            <Button onClick={handleEditCustomer} className="w-full">
+              Update Customer
+            </Button>
           </div>
         </DialogContent>
       </Dialog>

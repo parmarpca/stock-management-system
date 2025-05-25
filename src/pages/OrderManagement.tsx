@@ -10,6 +10,8 @@ const OrderManagement = () => {
     orders,
     loading,
     createOrder,
+    updateOrder,
+    deleteOrder,
     createCustomer,
     fetchCustomers,
   } = useStockData();
@@ -32,6 +34,8 @@ const OrderManagement = () => {
         customers={customers}
         orders={orders}
         onOrderCreate={createOrder}
+        onOrderUpdate={updateOrder}
+        onOrderDelete={deleteOrder}
         onCustomerCreate={createCustomer}
         fetchCustomers={fetchCustomers}
       />

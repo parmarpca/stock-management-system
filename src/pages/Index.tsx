@@ -9,14 +9,14 @@ import { useStockData } from '@/hooks/useStockData';
 
 const Index = () => {
   const navigate = useNavigate();
-  const { stocks, customers, slips } = useStockData();
+  const { stocks, customers, orders } = useStockData();
   
   const lowStockItems = stocks.filter(stock => stock.quantity < 50);
   const lowStockCount = lowStockItems.length;
   
   const totalStockValue = stocks.reduce((total, stock) => total + stock.quantity, 0);
   const totalCustomers = customers.length;
-  const totalOrders = slips.length;
+  const totalOrders = orders.length;
 
   return (
     <Layout title="Dashboard" lowStockCount={lowStockCount}>

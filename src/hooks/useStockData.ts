@@ -23,6 +23,8 @@ export interface OrderItem {
   stock_id: string;
   pieces_used: number;
   stock_name?: string;
+  stock_code?: string;
+  stock_length?: string;
 }
 
 export interface Order {
@@ -80,7 +82,7 @@ export const useStockData = () => {
             id,
             stock_id,
             pieces_used,
-            stocks(name)
+            stocks(name, code, length)
           )
         `
         )
@@ -95,6 +97,8 @@ export const useStockData = () => {
           order_items: order.order_items?.map((item: any) => ({
             ...item,
             stock_name: item.stocks?.name,
+            stock_code: item.stocks?.code,
+            stock_length: item.stocks?.length,
           })),
         })) || [];
 
@@ -176,13 +180,14 @@ export const useStockData = () => {
 
   const createOrder = async (
     customerId: string,
-    items: Omit<OrderItem, "id" | "order_id">[]
+    items: Omit<OrderItem, "id" | "order_id">[],
+    colorCode?: string
   ) => {
     try {
       // Create the order
       const { data: orderData, error: orderError } = await supabase
         .from("orders")
-        .insert([{ customer_id: customerId }])
+        .insert([{ customer_id: customerId, color_code: colorCode }])
         .select()
         .single();
 
@@ -242,6 +247,172 @@ export const useStockData = () => {
     loadData();
   }, []);
 
+  const deleteOrder = async (orderId: string) => {
+    try {
+      // First get order items to restore stock quantities
+      const { data: orderItems, error: fetchError } = await supabase
+        .from("order_items")
+        .select("stock_id, pieces_used")
+        .eq("order_id", orderId);
+
+      if (fetchError) throw fetchError;
+
+      // Restore stock quantities
+      for (const item of orderItems || []) {
+        // Get current quantity
+        const { data: stockData, error: stockError } = await supabase
+          .from("stocks")
+          .select("quantity")
+          .eq("id", item.stock_id)
+          .single();
+
+        if (stockError) throw stockError;
+
+        const newQuantity = stockData.quantity + item.pieces_used;
+
+        const { error: updateError } = await supabase
+          .from("stocks")
+          .update({ quantity: newQuantity })
+          .eq("id", item.stock_id);
+
+        if (updateError) throw updateError;
+      }
+
+      // Delete order items
+      const { error: itemsError } = await supabase
+        .from("order_items")
+        .delete()
+        .eq("order_id", orderId);
+
+      if (itemsError) throw itemsError;
+
+      // Then delete the order
+      const { error: orderError } = await supabase
+        .from("orders")
+        .delete()
+        .eq("id", orderId);
+
+      if (orderError) throw orderError;
+
+      // Refresh data
+      await Promise.all([fetchStocks(), fetchOrders()]);
+    } catch (error) {
+      console.error("Error deleting order:", error);
+      throw error;
+    }
+  };
+
+  const deleteStock = async (stockId: string) => {
+    try {
+      const { error } = await supabase
+        .from("stocks")
+        .delete()
+        .eq("id", stockId);
+
+      if (error) throw error;
+
+      // Refresh stocks
+      await fetchStocks();
+    } catch (error) {
+      console.error("Error deleting stock:", error);
+      throw error;
+    }
+  };
+
+  const updateOrder = async (
+    orderId: string,
+    customerId: string,
+    items: Omit<OrderItem, "id" | "order_id">[],
+    colorCode?: string
+  ) => {
+    try {
+      // First get existing order items to restore stock quantities
+      const { data: existingItems, error: fetchError } = await supabase
+        .from("order_items")
+        .select("stock_id, pieces_used")
+        .eq("order_id", orderId);
+
+      if (fetchError) throw fetchError;
+
+      // Restore stock quantities from existing items
+      for (const item of existingItems || []) {
+        const { data: stockData, error: stockError } = await supabase
+          .from("stocks")
+          .select("quantity")
+          .eq("id", item.stock_id)
+          .single();
+
+        if (stockError) throw stockError;
+
+        const newQuantity = stockData.quantity + item.pieces_used;
+
+        const { error: updateError } = await supabase
+          .from("stocks")
+          .update({ quantity: newQuantity })
+          .eq("id", item.stock_id);
+
+        if (updateError) throw updateError;
+      }
+
+      // Update the order
+      const { error: orderError } = await supabase
+        .from("orders")
+        .update({ customer_id: customerId, color_code: colorCode })
+        .eq("id", orderId);
+
+      if (orderError) throw orderError;
+
+      // Delete existing order items
+      const { error: deleteItemsError } = await supabase
+        .from("order_items")
+        .delete()
+        .eq("order_id", orderId);
+
+      if (deleteItemsError) throw deleteItemsError;
+
+      // Create new order items
+      const orderItems = items.map((item) => ({
+        order_id: orderId,
+        stock_id: item.stock_id,
+        pieces_used: item.pieces_used,
+      }));
+
+      const { error: itemsError } = await supabase
+        .from("order_items")
+        .insert(orderItems);
+
+      if (itemsError) throw itemsError;
+
+      // Update stock quantities for new items
+      for (const item of items) {
+        const { data: stockData, error: stockError } = await supabase
+          .from("stocks")
+          .select("quantity")
+          .eq("id", item.stock_id)
+          .single();
+
+        if (stockError) throw stockError;
+
+        const newQuantity = stockData.quantity - item.pieces_used;
+
+        const { error: updateError } = await supabase
+          .from("stocks")
+          .update({ quantity: newQuantity })
+          .eq("id", item.stock_id);
+
+        if (updateError) throw updateError;
+      }
+
+      // Refresh data
+      await Promise.all([fetchStocks(), fetchOrders()]);
+
+      return { id: orderId };
+    } catch (error) {
+      console.error("Error updating order:", error);
+      throw error;
+    }
+  };
+
   return {
     stocks,
     customers,
@@ -250,6 +421,9 @@ export const useStockData = () => {
     createOrder,
     createCustomer,
     createOrUpdateStock,
+    deleteOrder,
+    deleteStock,
+    updateOrder,
     fetchStocks,
     fetchCustomers,
     fetchOrders,
