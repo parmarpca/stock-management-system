@@ -1,16 +1,41 @@
-import { Package, Users, ShoppingCart, BarChart3 } from "lucide-react";
+import {
+  Package,
+  Users,
+  ShoppingCart,
+  BarChart3,
+  Database,
+  UserCog,
+} from "lucide-react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/contexts/AuthContext";
 
 const Sidebar = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const { isAdmin } = useAuth();
 
   const menuItems = [
     { id: "/", label: "Dashboard", icon: BarChart3, path: "/" },
     { id: "stock", label: "Stock Management", icon: Package, path: "/stock" },
     { id: "customers", label: "Customers", icon: Users, path: "/customers" },
     { id: "orders", label: "Orders", icon: ShoppingCart, path: "/orders" },
+    ...(isAdmin
+      ? [
+          {
+            id: "users",
+            label: "User Management",
+            icon: UserCog,
+            path: "/users",
+          },
+          {
+            id: "backup",
+            label: "Backup Management",
+            icon: Database,
+            path: "/backup",
+          },
+        ]
+      : []),
   ];
 
   return (
