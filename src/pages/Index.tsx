@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Package, Users, FileText, AlertTriangle, Plus } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -7,7 +6,6 @@ import { Badge } from '@/components/ui/badge';
 import StockOverview from '@/components/StockOverview';
 import CustomerList from '@/components/CustomerList';
 import SlipManager from '@/components/SlipManager';
-import OrderForm from '@/components/OrderForm';
 import LoginForm from '@/components/LoginForm';
 import Sidebar from '@/components/Sidebar';
 
@@ -171,46 +169,46 @@ const Index = () => {
   }
 
   const renderDashboard = () => (
-    <div className="space-y-6">
+    <div className="space-y-4 lg:space-y-6">
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4">
         <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={handleTotalStockClick}>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Stock Items</CardTitle>
-            <Package className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-xs lg:text-sm font-medium">Total Stock Items</CardTitle>
+            <Package className="h-3 w-3 lg:h-4 lg:w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{totalStockItems}</div>
+            <div className="text-lg lg:text-2xl font-bold">{totalStockItems}</div>
           </CardContent>
         </Card>
         
         <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={handleLowStockClick}>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Low Stock Alerts</CardTitle>
-            <AlertTriangle className="h-4 w-4 text-red-500" />
+            <CardTitle className="text-xs lg:text-sm font-medium">Low Stock Alerts</CardTitle>
+            <AlertTriangle className="h-3 w-3 lg:h-4 lg:w-4 text-red-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-red-600">{lowStockCount}</div>
+            <div className="text-lg lg:text-2xl font-bold text-red-600">{lowStockCount}</div>
           </CardContent>
         </Card>
         
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Customers</CardTitle>
-            <Users className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-xs lg:text-sm font-medium">Total Customers</CardTitle>
+            <Users className="h-3 w-3 lg:h-4 lg:w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{totalCustomers}</div>
+            <div className="text-lg lg:text-2xl font-bold">{totalCustomers}</div>
           </CardContent>
         </Card>
         
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Today's Slips</CardTitle>
-            <FileText className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-xs lg:text-sm font-medium">Today's Orders</CardTitle>
+            <FileText className="h-3 w-3 lg:h-4 lg:w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{todaySlips}</div>
+            <div className="text-lg lg:text-2xl font-bold">{todaySlips}</div>
           </CardContent>
         </Card>
       </div>
@@ -221,19 +219,19 @@ const Index = () => {
       {/* Recent Activity */}
       <Card>
         <CardHeader>
-          <CardTitle>Recent Slips</CardTitle>
+          <CardTitle className="text-lg lg:text-xl">Recent Orders</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="space-y-4">
+          <div className="space-y-3 lg:space-y-4">
             {slips.slice(0, 5).map((slip) => (
-              <div key={slip.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                <div>
-                  <p className="font-medium">{slip.customer_name}</p>
-                  <p className="text-sm text-gray-600">{slip.stock_name} - {slip.length}</p>
+              <div key={slip.id} className="flex flex-col sm:flex-row sm:items-center justify-between p-3 bg-gray-50 rounded-lg gap-2">
+                <div className="flex-1">
+                  <p className="font-medium text-sm lg:text-base">{slip.customer_name}</p>
+                  <p className="text-xs lg:text-sm text-gray-600">{slip.stock_name} - {slip.length}</p>
                 </div>
-                <div className="text-right">
-                  <p className="font-medium">{slip.pieces_used} pieces</p>
-                  <p className="text-sm text-gray-600">{slip.date}</p>
+                <div className="text-left sm:text-right">
+                  <p className="font-medium text-sm lg:text-base">{slip.pieces_used} pieces</p>
+                  <p className="text-xs lg:text-sm text-gray-600">{slip.date}</p>
                 </div>
               </div>
             ))}
@@ -247,17 +245,17 @@ const Index = () => {
     <div className="min-h-screen bg-gray-50 flex">
       <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} />
       
-      <div className="flex-1 flex flex-col min-w-0">
-        <header className="bg-white shadow-sm border-b px-4 lg:px-6 py-4 flex-shrink-0">
+      <div className="flex-1 flex flex-col min-w-0 ml-16 lg:ml-0">
+        <header className="bg-white shadow-sm border-b px-3 lg:px-6 py-3 lg:py-4 flex-shrink-0 sticky top-0 z-20">
           <div className="flex items-center justify-between">
-            <h1 className="text-xl lg:text-2xl font-bold text-gray-900">
-              Factory Stock Management System
+            <h1 className="text-lg lg:text-2xl font-bold text-gray-900 truncate">
+              Factory Stock Management
             </h1>
             <div className="flex items-center space-x-2">
               {lowStockCount > 0 && (
                 <Badge 
                   variant="destructive" 
-                  className="flex items-center space-x-1 cursor-pointer"
+                  className="flex items-center space-x-1 cursor-pointer text-xs"
                   onClick={handleLowStockClick}
                 >
                   <AlertTriangle className="h-3 w-3" />
@@ -269,12 +267,11 @@ const Index = () => {
           </div>
         </header>
 
-        <main className="flex-1 p-4 lg:p-6 overflow-auto">
+        <main className="flex-1 p-3 lg:p-6 overflow-auto">
           {activeTab === 'dashboard' && renderDashboard()}
           {activeTab === 'stock' && <StockOverview stocks={stocks} setStocks={setStocks} showLowStockOnly={showLowStockOnly} />}
           {activeTab === 'customers' && <CustomerList customers={customers} setCustomers={setCustomers} />}
-          {activeTab === 'slips' && <SlipManager stocks={stocks} customers={customers} slips={slips} onSlipCreate={handleSlipCreation} />}
-          {activeTab === 'orders' && <OrderForm stocks={stocks} customers={customers} setCustomers={setCustomers} onOrderCreate={handleOrderCreation} />}
+          {activeTab === 'orders' && <SlipManager stocks={stocks} customers={customers} slips={slips} onSlipCreate={handleSlipCreation} setCustomers={setCustomers} />}
         </main>
       </div>
     </div>

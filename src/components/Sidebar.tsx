@@ -1,5 +1,5 @@
 
-import { Package, Users, FileText, BarChart3, Settings, ShoppingCart } from 'lucide-react';
+import { Package, Users, ShoppingCart, BarChart3 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface SidebarProps {
@@ -12,20 +12,18 @@ const Sidebar = ({ activeTab, setActiveTab }: SidebarProps) => {
     { id: 'dashboard', label: 'Dashboard', icon: BarChart3 },
     { id: 'stock', label: 'Stock Management', icon: Package },
     { id: 'customers', label: 'Customers', icon: Users },
-    { id: 'slips', label: 'Slips', icon: FileText },
     { id: 'orders', label: 'Orders', icon: ShoppingCart },
-    { id: 'settings', label: 'Settings', icon: Settings },
   ];
 
   return (
-    <div className="w-16 lg:w-64 bg-slate-900 text-white h-screen flex-shrink-0 fixed lg:relative z-10">
-      <div className="p-3 lg:p-6">
+    <div className="w-16 lg:w-64 bg-slate-900 text-white h-screen flex-shrink-0 fixed z-30 flex flex-col">
+      <div className="p-3 lg:p-6 flex-shrink-0">
         <h2 className="text-lg lg:text-xl font-bold hidden lg:block">Factory Stock</h2>
         <h2 className="text-xs font-bold lg:hidden">FS</h2>
         <p className="text-slate-400 text-xs lg:text-sm hidden lg:block">Management System</p>
       </div>
       
-      <nav className="mt-6">
+      <nav className="flex-1 overflow-y-auto">
         {menuItems.map((item) => {
           const Icon = item.icon;
           return (
