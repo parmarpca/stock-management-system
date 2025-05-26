@@ -361,7 +361,7 @@ const StockOverview = ({
               <div style="font-weight: 500;"><span style="font-weight: bold;">${
                 stock.code
               }</span> - ${stock.name}</div>
-              <div style="font-size: 10px; color: #000;">
+              <div style="color: #000; font-weight: 500">
                 Length: ${stock.length} | Quantity: ${stock.quantity} pcs
                 ${
                   stock.quantity < 50
