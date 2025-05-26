@@ -633,44 +633,85 @@ const OrderManager = ({
 
   const handlePrintOrder = (order: Order) => {
     const printContent = `
-      <div style="padding: 8px; font-family: Arial, sans-serif; font-size: 12px; line-height: 1.2;">
-        <div style="text-align: center; margin-bottom: 8px;">
-          <strong style="font-size: 14px;">ORDER RECEIPT</strong>
+      <div style="padding: 10px; font-family: Arial, sans-serif; font-size: 12px; line-height: 1.2;">
+        <div style="text-align: center; margin-bottom: 10px;">
+          <h1 style="margin: 0; font-size: 18px; font-weight: bold;">ORDER RECEIPT</h1>
         </div>
-        <div style="border-bottom: 1px solid #000; margin-bottom: 6px; padding-bottom: 4px;">
-          <div><strong>Date:</strong> ${order.order_date}</div>
-          <div><strong>Time:</strong> ${new Date().toLocaleTimeString()}</div>
-          <div><strong>Customer:</strong> ${order.customer_name}</div>
-          ${
-            order.color_code
-              ? `<div><strong>Color:</strong> ${order.color_code}</div>`
-              : ""
-          }
+        
+        <div style="margin-bottom: 10px; padding: 8px; border: 1px solid #ddd; background-color: #f9f9f9;">
+          <table style="width: 100%; border-collapse: collapse;">
+            <tr>
+              <td style="padding: 2px 0; font-weight: bold; width: 20%;">Date:</td>
+              <td style="padding: 2px 0; width: 30%;">${order.order_date}</td>
+              <td style="padding: 2px 0; font-weight: bold; width: 20%;">Time:</td>
+              <td style="padding: 2px 0; width: 30%;">${new Date().toLocaleTimeString()}</td>
+            </tr>
+            <tr>
+              <td style="padding: 2px 0; font-weight: bold;">Customer:</td>
+              <td style="padding: 2px 0;">${order.customer_name}</td>
+              ${
+                order.color_code
+                  ? `<td style="padding: 2px 0; font-weight: bold;">Color:</td>
+                     <td style="padding: 2px 0;">${order.color_code}</td>`
+                  : `<td colspan="2"></td>`
+              }
+            </tr>
+          </table>
         </div>
-        <div style="margin-bottom: 6px;">
-          <div style="font-weight: bold; margin-bottom: 3px;">Items:</div>
-          ${
-            order.order_items
-              ?.map(
-                (item) =>
-                  `<div style="margin-bottom: 1px; font-size: 11px;">
-                    <span style="font-weight: bold;">${
-                      item.stock_code || "N/A"
-                    }</span> - ${item.stock_name} (${
-                    item.stock_length || "N/A"
-                  }) - ${item.pieces_used}pcs
-                  </div>`
-              )
-              .join("") || "<div>No items</div>"
-          }
+
+        <div style="margin-bottom: 10px;">
+          <h2 style="margin: 0 0 5px 0; font-size: 14px; font-weight: bold;">Order Items</h2>
+          <table style="width: 100%; border-collapse: collapse; border: 1px solid #000;">
+            <thead>
+              <tr style="background-color: #f0f0f0;">
+                <th style="border: 1px solid #000; padding: 4px; text-align: left; font-weight: bold; font-size: 11px;">Code</th>
+                <th style="border: 1px solid #000; padding: 4px; text-align: left; font-weight: bold; font-size: 11px;">Item Name</th>
+                <th style="border: 1px solid #000; padding: 4px; text-align: center; font-weight: bold; font-size: 11px;">Length</th>
+                <th style="border: 1px solid #000; padding: 4px; text-align: center; font-weight: bold; font-size: 11px;">Qty</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${
+                order.order_items
+                  ?.map(
+                    (item) =>
+                      `<tr>
+                        <td style="border: 1px solid #000; padding: 4px; font-weight: bold; font-size: 11px;">${
+                          item.stock_code || "N/A"
+                        }</td>
+                        <td style="border: 1px solid #000; padding: 4px; font-size: 11px;">${
+                          item.stock_name
+                        }</td>
+                        <td style="border: 1px solid #000; padding: 4px; text-align: center; font-size: 11px;">${
+                          item.stock_length || "N/A"
+                        }</td>
+                        <td style="border: 1px solid #000; padding: 4px; text-align: center; font-weight: bold; font-size: 11px;">${
+                          item.pieces_used
+                        }</td>
+                      </tr>`
+                  )
+                  .join("") ||
+                "<tr><td colspan='4' style='border: 1px solid #000; padding: 4px; text-align: center; font-size: 11px;'>No items</td></tr>"
+              }
+            </tbody>
+            <tfoot>
+              <tr style="background-color: #f0f0f0;">
+                <td colspan="3" style="border: 1px solid #000; padding: 4px; font-weight: bold; text-align: right; font-size: 11px;">Total:</td>
+                <td style="border: 1px solid #000; padding: 4px; text-align: center; font-weight: bold; font-size: 12px;">
+                  ${
+                    order.order_items?.reduce(
+                      (total, item) => total + item.pieces_used,
+                      0
+                    ) || 0
+                  }
+                </td>
+              </tr>
+            </tfoot>
+          </table>
         </div>
-        <div style="border-top: 1px solid #000; padding-top: 4px; text-align: center; font-size: 10px;">
-          Total: ${
-            order.order_items?.reduce(
-              (total, item) => total + item.pieces_used,
-              0
-            ) || 0
-          } pieces
+
+        <div style="margin-top: 15px; text-align: center; font-size: 10px; color: #666;">
+          Generated: ${new Date().toLocaleDateString()} ${new Date().toLocaleTimeString()}
         </div>
       </div>
     `;
@@ -680,12 +721,14 @@ const OrderManager = ({
       printWindow.document.write(`
         <html>
           <head>
-            <title>Order Receipt</title>
+            <title>Order Receipt - ${order.customer_name}</title>
             <style>
               @media print {
                 body { margin: 0; }
-                 @page { size: A4; margin: 10mm; }
+                @page { size: A5; margin: 8mm; }
               }
+              body { font-family: Arial, sans-serif; }
+              table { page-break-inside: avoid; }
             </style>
           </head>
           <body>${printContent}</body>

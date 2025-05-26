@@ -97,7 +97,7 @@ export const useStockData = () => {
       }
 
       const { data: ordersData, error: ordersError } = await query.order(
-        "order_date",
+        "created_at",
         { ascending: false }
       );
 

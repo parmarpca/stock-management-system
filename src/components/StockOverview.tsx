@@ -342,40 +342,103 @@ const StockOverview = ({
       a.code.localeCompare(b.code)
     );
 
+    const lowStockCount = sortedStocks.filter(
+      (stock) => stock.quantity < 50
+    ).length;
+    const totalQuantity = sortedStocks.reduce(
+      (total, stock) => total + stock.quantity,
+      0
+    );
+
     const printContent = `
-      <div style="padding: 8px; font-family: Arial, sans-serif; font-size: 12px; line-height: 1.2;">
-        <div style="border-bottom: 1px solid #000; margin-bottom: 6px; padding-bottom: 4px;">
-          <div><strong>Date:</strong> ${new Date().toLocaleDateString()}</div>
-          <div><strong>Time:</strong> ${new Date().toLocaleTimeString()}</div>
-          <div><strong>Total Items:</strong> ${sortedStocks.length}</div>
+      <div style="padding: 8px; font-family: Arial, sans-serif; font-size: 10px; line-height: 1.2;">
+        <div style="text-align: center; margin-bottom: 8px;">
+          <h1 style="margin: 0; font-size: 16px; font-weight: bold;">STOCK INVENTORY</h1>
         </div>
-        <div style="margin-bottom: 6px;">
-          <div style="font-weight: bold; margin-bottom: 3px; font-size: 20px;">Stock Details:</div>
-          ${sortedStocks
-            .map(
-              (stock) => `
-            <div style="margin-bottom: 7px; padding-bottom: 7px; border-bottom: 1px dotted #ccc; font-size: 15px; ">
-              <div style="font-weight: 500;"><span style="font-weight: bold;">${
-                stock.code
-              }</span> - ${stock.name}</div>
-              <div style="color: #000; font-weight: 500">
-                Length: ${stock.length} | Quantity: ${stock.quantity} pcs
-                ${
+        
+        <div style="margin-bottom: 8px; padding: 6px; border: 1px solid #ddd; background-color: #f9f9f9;">
+          <table style="width: 100%; border-collapse: collapse;">
+            <tr>
+              <td style="padding: 1px 0; font-weight: bold; width: 25%;">Date:</td>
+              <td style="padding: 1px 0; width: 25%;">${new Date().toLocaleDateString()}</td>
+              <td style="padding: 1px 0; font-weight: bold; width: 25%;">Time:</td>
+              <td style="padding: 1px 0; width: 25%;">${new Date().toLocaleTimeString()}</td>
+            </tr>
+            <tr>
+              <td style="padding: 1px 0; font-weight: bold;">Items:</td>
+              <td style="padding: 1px 0;">${sortedStocks.length}</td>
+              <td style="padding: 1px 0; font-weight: bold;">Low Stock:</td>
+              <td style="padding: 1px 0; color: ${
+                lowStockCount > 0 ? "red" : "green"
+              }; font-weight: bold;">${lowStockCount}</td>
+            </tr>
+            <tr>
+              <td style="padding: 1px 0; font-weight: bold;">Total Qty:</td>
+              <td style="padding: 1px 0; font-weight: bold;">${totalQuantity}</td>
+              <td colspan="2"></td>
+            </tr>
+          </table>
+        </div>
+
+        <div style="margin-bottom: 8px;">
+          <table style="width: 100%; border-collapse: collapse; border: 1px solid #000;">
+            <thead>
+              <tr style="background-color: #f0f0f0;">
+                <th style="border: 1px solid #000; padding: 3px; text-align: left; font-weight: bold; font-size: 9px;">Code</th>
+                <th style="border: 1px solid #000; padding: 3px; text-align: left; font-weight: bold; font-size: 9px;">Item</th>
+                <th style="border: 1px solid #000; padding: 3px; text-align: center; font-weight: bold; font-size: 9px;">Len</th>
+                <th style="border: 1px solid #000; padding: 3px; text-align: center; font-weight: bold; font-size: 9px;">Qty</th>
+                <th style="border: 1px solid #000; padding: 3px; text-align: center; font-weight: bold; font-size: 9px;">Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${sortedStocks
+                .map(
+                  (stock) => `
+                <tr ${
                   stock.quantity < 50
-                    ? ' | <span style="color: red;">LOW STOCK</span>'
+                    ? 'style="background-color: #ffebee;"'
                     : ""
-                }
-              </div>
-            </div>
-          `
-            )
-            .join("")}
+                }>
+                  <td style="border: 1px solid #000; padding: 3px; font-weight: bold; font-size: 9px;">${
+                    stock.code
+                  }</td>
+                  <td style="border: 1px solid #000; padding: 3px; font-size: 9px;">${
+                    stock.name
+                  }</td>
+                  <td style="border: 1px solid #000; padding: 3px; text-align: center; font-size: 9px;">${
+                    stock.length
+                  }</td>
+                  <td style="border: 1px solid #000; padding: 3px; text-align: center; font-weight: bold; font-size: 9px; ${
+                    stock.quantity < 50 ? "color: red;" : "color: green;"
+                  }">${stock.quantity}</td>
+                  <td style="border: 1px solid #000; padding: 3px; text-align: center; font-weight: bold; font-size: 8px; ${
+                    stock.quantity < 50 ? "color: red;" : "color: green;"
+                  }">
+                    ${stock.quantity < 50 ? "LOW" : "OK"}
+                  </td>
+                </tr>`
+                )
+                .join("")}
+            </tbody>
+            <tfoot>
+              <tr style="background-color: #f0f0f0;">
+                <td colspan="3" style="border: 1px solid #000; padding: 3px; font-weight: bold; text-align: right; font-size: 9px;">Total:</td>
+                <td style="border: 1px solid #000; padding: 3px; text-align: center; font-weight: bold; font-size: 10px;">
+                  ${totalQuantity}
+                </td>
+                <td style="border: 1px solid #000; padding: 3px; text-align: center; font-weight: bold; font-size: 8px; color: ${
+                  lowStockCount > 0 ? "red" : "green"
+                };">
+                  ${lowStockCount > 0 ? `${lowStockCount} LOW` : "ALL OK"}
+                </td>
+              </tr>
+            </tfoot>
+          </table>
         </div>
-        <div style="border-top: 1px solid #000; padding-top: 4px; text-align: center; font-size: 10px;">
-          Total Stock: ${sortedStocks.reduce(
-            (total, stock) => total + stock.quantity,
-            0
-          )} pieces
+
+        <div style="margin-top: 10px; text-align: center; font-size: 8px; color: #666;">
+          Generated: ${new Date().toLocaleDateString()} ${new Date().toLocaleTimeString()}
         </div>
       </div>
     `;
@@ -385,12 +448,15 @@ const StockOverview = ({
       printWindow.document.write(`
         <html>
           <head>
-            <title>Stock Inventory Report</title>
+            <title>Stock Inventory Report - ${new Date().toLocaleDateString()}</title>
             <style>
               @media print {
                 body { margin: 0; }
-                @page { size: A4; margin: 10mm; }
+                @page { size: A5; margin: 5mm; }
               }
+              body { font-family: Arial, sans-serif; }
+              table { page-break-inside: avoid; }
+              .low-stock { background-color: #ffebee !important; }
             </style>
           </head>
           <body>${printContent}</body>
