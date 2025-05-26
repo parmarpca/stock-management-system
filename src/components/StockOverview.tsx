@@ -344,20 +344,17 @@ const StockOverview = ({
 
     const printContent = `
       <div style="padding: 8px; font-family: Arial, sans-serif; font-size: 12px; line-height: 1.2;">
-        <div style="text-align: center; margin-bottom: 8px;">
-          <strong style="font-size: 14px;">STOCK INVENTORY REPORT</strong>
-        </div>
         <div style="border-bottom: 1px solid #000; margin-bottom: 6px; padding-bottom: 4px;">
           <div><strong>Date:</strong> ${new Date().toLocaleDateString()}</div>
           <div><strong>Time:</strong> ${new Date().toLocaleTimeString()}</div>
           <div><strong>Total Items:</strong> ${sortedStocks.length}</div>
         </div>
         <div style="margin-bottom: 6px;">
-          <div style="font-weight: bold; margin-bottom: 3px;">Stock Details:</div>
+          <div style="font-weight: bold; margin-bottom: 3px; font-size: 20px;">Stock Details:</div>
           ${sortedStocks
             .map(
               (stock) => `
-            <div style="margin-bottom: 7px; padding-bottom: 7px; border-bottom: 1px dotted #ccc; ">
+            <div style="margin-bottom: 7px; padding-bottom: 7px; border-bottom: 1px dotted #ccc; font-size: 15px; ">
               <div style="font-weight: 500;"><span style="font-weight: bold;">${
                 stock.code
               }</span> - ${stock.name}</div>
