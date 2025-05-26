@@ -358,8 +358,10 @@ const StockOverview = ({
             .map(
               (stock) => `
             <div style="margin-bottom: 3px; border-bottom: 1px dotted #ccc; padding-bottom: 2px;">
-              <div style="font-weight: 500;">${stock.code} - ${stock.name}</div>
-              <div style="font-size: 10px; color: #666;">
+              <div style="font-weight: 500;"><span style="font-weight: bold;">${
+                stock.code
+              }</span> - ${stock.name}</div>
+              <div style="font-size: 10px; color: #000;">
                 Length: ${stock.length} | Quantity: ${stock.quantity} pcs
                 ${
                   stock.quantity < 50

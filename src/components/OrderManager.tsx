@@ -511,7 +511,9 @@ const OrderManager = ({
               ?.map(
                 (item) =>
                   `<div style="margin-bottom: 1px; font-size: 11px;">
-                    ${item.stock_code || "N/A"} - ${item.stock_name} (${
+                    <span style="font-weight: bold;">${
+                      item.stock_code || "N/A"
+                    }</span> - ${item.stock_name} (${
                     item.stock_length || "N/A"
                   }) - ${item.pieces_used}pcs
                   </div>`
@@ -539,7 +541,7 @@ const OrderManager = ({
             <style>
               @media print {
                 body { margin: 0; }
-                @page { size: 58mm auto; margin: 2mm; }
+                 @page { size: A4; margin: 10mm; }
               }
             </style>
           </head>
