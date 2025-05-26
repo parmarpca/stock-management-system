@@ -452,7 +452,7 @@ const StockOverview = ({
             <style>
               @media print {
                 body { margin: 0; }
-                @page { size: A5; margin: 5mm; }
+                @page { size: A4; margin: 10mm; }
               }
               body { font-family: Arial, sans-serif; }
               table { page-break-inside: avoid; }

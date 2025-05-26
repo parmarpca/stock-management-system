@@ -725,10 +725,150 @@ const OrderManager = ({
             <style>
               @media print {
                 body { margin: 0; }
-                @page { size: A5; margin: 8mm; }
+                @page { size: A4; margin: 10mm; }
               }
               body { font-family: Arial, sans-serif; }
               table { page-break-inside: avoid; }
+            </style>
+          </head>
+          <body>${printContent}</body>
+        </html>
+      `);
+      printWindow.document.close();
+      printWindow.print();
+    }
+  };
+
+  const handlePrintSelectedOrders = () => {
+    if (selectedOrders.size === 0) {
+      alert("Please select orders to print");
+      return;
+    }
+
+    const selectedOrdersList = orders.filter((order) =>
+      selectedOrders.has(order.id)
+    );
+    const totalOrders = selectedOrdersList.length;
+    const totalItems = selectedOrdersList.reduce(
+      (total, order) =>
+        total +
+        (order.order_items?.reduce(
+          (orderTotal, item) => orderTotal + item.pieces_used,
+          0
+        ) || 0),
+      0
+    );
+
+    const printContent = `
+      <div style="padding: 8px; font-family: Arial, sans-serif; font-size: 10px; line-height: 1.2;">
+        <div style="text-align: center; margin-bottom: 8px;">
+          <h1 style="margin: 0; font-size: 16px; font-weight: bold;">MULTIPLE ORDERS REPORT</h1>
+          <p style="margin: 2px 0; font-size: 12px;">Total Orders: ${totalOrders} | Total Items: ${totalItems}</p>
+        </div>
+        
+        <div style="margin-bottom: 6px; padding: 4px; border: 1px solid #ddd; background-color: #f9f9f9;">
+          <table style="width: 100%; border-collapse: collapse;">
+            <tr>
+              <td style="padding: 1px 0; font-weight: bold; width: 25%;">Date:</td>
+              <td style="padding: 1px 0; width: 25%;">${new Date().toLocaleDateString()}</td>
+              <td style="padding: 1px 0; font-weight: bold; width: 25%;">Time:</td>
+              <td style="padding: 1px 0; width: 25%;">${new Date().toLocaleTimeString()}</td>
+            </tr>
+          </table>
+        </div>
+
+        ${selectedOrdersList
+          .map(
+            (order, index) => `
+          <div style="margin-bottom: 8px; page-break-inside: avoid;">
+            <div style="background-color: #f0f0f0; padding: 3px; border: 1px solid #000; font-weight: bold; font-size: 11px;">
+              Order #${index + 1} - ${order.customer_name} - ${
+              order.order_date
+            }${order.color_code ? ` - Color: ${order.color_code}` : ""}
+            </div>
+            <table style="width: 100%; border-collapse: collapse; border: 1px solid #000; margin-bottom: 4px;">
+              <thead>
+                <tr style="background-color: #f8f8f8;">
+                  <th style="border: 1px solid #000; padding: 2px; text-align: left; font-weight: bold; font-size: 9px;">Code</th>
+                  <th style="border: 1px solid #000; padding: 2px; text-align: left; font-weight: bold; font-size: 9px;">Item</th>
+                  <th style="border: 1px solid #000; padding: 2px; text-align: center; font-weight: bold; font-size: 9px;">Len</th>
+                  <th style="border: 1px solid #000; padding: 2px; text-align: center; font-weight: bold; font-size: 9px;">Qty</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${
+                  order.order_items
+                    ?.map(
+                      (item) => `
+                  <tr>
+                    <td style="border: 1px solid #000; padding: 2px; font-weight: bold; font-size: 9px;">${
+                      item.stock_code || "N/A"
+                    }</td>
+                    <td style="border: 1px solid #000; padding: 2px; font-size: 9px;">${
+                      item.stock_name
+                    }</td>
+                    <td style="border: 1px solid #000; padding: 2px; text-align: center; font-size: 9px;">${
+                      item.stock_length || "N/A"
+                    }</td>
+                    <td style="border: 1px solid #000; padding: 2px; text-align: center; font-weight: bold; font-size: 9px;">${
+                      item.pieces_used
+                    }</td>
+                  </tr>
+                `
+                    )
+                    .join("") ||
+                  '<tr><td colspan="4" style="border: 1px solid #000; padding: 2px; text-align: center; font-size: 9px;">No items</td></tr>'
+                }
+              </tbody>
+              <tfoot>
+                <tr style="background-color: #f0f0f0;">
+                  <td colspan="3" style="border: 1px solid #000; padding: 2px; font-weight: bold; text-align: right; font-size: 9px;">Order Total:</td>
+                  <td style="border: 1px solid #000; padding: 2px; text-align: center; font-weight: bold; font-size: 10px;">
+                    ${
+                      order.order_items?.reduce(
+                        (total, item) => total + item.pieces_used,
+                        0
+                      ) || 0
+                    }
+                  </td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        `
+          )
+          .join("")}
+
+        <div style="margin-top: 8px; padding: 4px; border: 2px solid #000; background-color: #f0f0f0;">
+          <table style="width: 100%; border-collapse: collapse;">
+            <tr>
+              <td style="padding: 2px; font-weight: bold; font-size: 12px;">GRAND TOTAL:</td>
+              <td style="padding: 2px; text-align: right; font-weight: bold; font-size: 12px;">${totalOrders} Orders</td>
+              <td style="padding: 2px; text-align: right; font-weight: bold; font-size: 12px;">${totalItems} Items</td>
+            </tr>
+          </table>
+        </div>
+
+        <div style="margin-top: 8px; text-align: center; font-size: 8px; color: #666;">
+          Generated: ${new Date().toLocaleDateString()} ${new Date().toLocaleTimeString()}
+        </div>
+      </div>
+    `;
+
+    const printWindow = window.open("", "_blank");
+    if (printWindow) {
+      printWindow.document.write(`
+        <html>
+          <head>
+            <title>Multiple Orders Report - ${new Date().toLocaleDateString()}</title>
+            <style>
+              @media print {
+                body { margin: 0; }
+                @page { size: A5; margin: 5mm; }
+              }
+              body { font-family: Arial, sans-serif; }
+              table { page-break-inside: avoid; }
+              .order-section { page-break-inside: avoid; }
             </style>
           </head>
           <body>${printContent}</body>
@@ -1005,6 +1145,15 @@ const OrderManager = ({
             <span className="text-sm text-gray-600 self-center">
               {selectedOrders.size} order(s) selected
             </span>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handlePrintSelectedOrders}
+              className="flex items-center space-x-1"
+            >
+              <Printer className="h-4 w-4" />
+              <span>Print Selected</span>
+            </Button>
             {showHiddenOrders ? (
               <Button
                 variant="outline"

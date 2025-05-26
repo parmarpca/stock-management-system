@@ -10,6 +10,7 @@ import {
   Database,
   AlertTriangle,
   Key,
+  Trash2,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -44,9 +45,11 @@ const decryptData = (encryptedData: string, password: string): string => {
 const BackupManager = () => {
   const [isDownloading, setIsDownloading] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
+  const [isClearing, setIsClearing] = useState(false);
   const [uploadFile, setUploadFile] = useState<File | null>(null);
   const [backupPassword, setBackupPassword] = useState("");
   const [restorePassword, setRestorePassword] = useState("");
+  const [clearConfirmation, setClearConfirmation] = useState("");
   const { isAdmin } = useAuth();
 
   if (!isAdmin) {
@@ -256,6 +259,58 @@ const BackupManager = () => {
     }
   };
 
+  const clearDatabase = async () => {
+    if (clearConfirmation !== "DELETE ALL DATA") {
+      alert('Please type "DELETE ALL DATA" to confirm database clearing');
+      return;
+    }
+
+    const finalConfirm = confirm(
+      "⚠️ FINAL WARNING ⚠️\n\nThis will permanently delete ALL data from the database including:\n- All stock items\n- All customers\n- All orders\n- All order items\n\nThis action CANNOT be undone!\n\nAre you absolutely sure you want to proceed?"
+    );
+
+    if (!finalConfirm) {
+      return;
+    }
+
+    setIsClearing(true);
+    try {
+      // Clear all data in reverse order due to foreign key constraints
+      await supabase
+        .from("order_items")
+        .delete()
+        .neq("id", "00000000-0000-0000-0000-000000000000");
+
+      await supabase
+        .from("orders")
+        .delete()
+        .neq("id", "00000000-0000-0000-0000-000000000000");
+
+      await supabase
+        .from("stocks")
+        .delete()
+        .neq("id", "00000000-0000-0000-0000-000000000000");
+
+      await supabase
+        .from("customers")
+        .delete()
+        .neq("id", "00000000-0000-0000-0000-000000000000");
+
+      alert(
+        "Database cleared successfully! All data has been permanently deleted."
+      );
+      setClearConfirmation("");
+
+      // Refresh the page to reflect the changes
+      window.location.reload();
+    } catch (error) {
+      console.error("Error clearing database:", error);
+      alert("Failed to clear database. Please try again.");
+    } finally {
+      setIsClearing(false);
+    }
+  };
+
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file && (file.name.endsWith(".smb") || file.name.endsWith(".json"))) {
@@ -273,7 +328,7 @@ const BackupManager = () => {
         <h2 className="text-2xl font-bold">Backup Management</h2>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Download Backup */}
         <Card>
           <CardHeader>
@@ -392,6 +447,62 @@ const BackupManager = () => {
             </Button>
           </CardContent>
         </Card>
+
+        {/* Clear Database */}
+        <Card className="border-red-200">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-red-600">
+              <Trash2 className="h-5 w-5" />
+              Clear Database
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <p className="text-sm text-gray-600">
+              Permanently delete all data from the database. This action cannot
+              be undone.
+            </p>
+            <div className="space-y-2">
+              <Label htmlFor="clear-confirmation">
+                Type "DELETE ALL DATA" to confirm
+              </Label>
+              <Input
+                id="clear-confirmation"
+                type="text"
+                value={clearConfirmation}
+                onChange={(e) => setClearConfirmation(e.target.value)}
+                placeholder="DELETE ALL DATA"
+                autoComplete="off"
+                className="border-red-200 focus:border-red-400"
+              />
+            </div>
+            <div className="bg-red-50 border border-red-200 rounded-md p-3">
+              <p className="text-sm text-red-800 font-medium">⚠️ DANGER ZONE</p>
+              <p className="text-sm text-red-700">
+                This will permanently delete ALL data including stocks,
+                customers, orders, and order items. This action CANNOT be
+                undone!
+              </p>
+            </div>
+            <Button
+              onClick={clearDatabase}
+              disabled={isClearing || clearConfirmation !== "DELETE ALL DATA"}
+              variant="destructive"
+              className="w-full bg-red-600 hover:bg-red-700"
+            >
+              {isClearing ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Clearing Database...
+                </>
+              ) : (
+                <>
+                  <Trash2 className="mr-2 h-4 w-4" />
+                  Clear All Data
+                </>
+              )}
+            </Button>
+          </CardContent>
+        </Card>
       </div>
 
       <Card>
@@ -422,6 +533,10 @@ const BackupManager = () => {
             <p>
               • Legacy .json backups are still supported for backward
               compatibility
+            </p>
+            <p className="text-red-600 font-medium">
+              • Clear Database permanently deletes ALL data - use with extreme
+              caution!
             </p>
           </div>
         </CardContent>
