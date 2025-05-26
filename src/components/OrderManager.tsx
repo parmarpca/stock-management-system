@@ -6,6 +6,11 @@ import {
   Edit,
   Trash2,
   Loader2,
+  Eye,
+  EyeOff,
+  Calendar,
+  CheckSquare,
+  Square,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -28,6 +33,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { SuccessDialog } from "@/components/ui/success-dialog";
 import { Stock, Customer, Order, OrderItem } from "@/hooks/useStockData";
+import { cn } from "@/lib/utils";
 
 interface OrderManagerProps {
   stocks: Stock[];
@@ -45,8 +51,14 @@ interface OrderManagerProps {
     colorCode?: string
   ) => Promise<any>;
   onOrderDelete: (orderId: string) => Promise<any>;
+  onOrderHide: (orderId: string) => Promise<any>;
+  onOrderShow: (orderId: string) => Promise<any>;
   onCustomerCreate: (name: string) => Promise<any>;
   fetchCustomers: () => Promise<void>;
+  fetchOrders: (
+    includeHidden?: boolean,
+    showTodayOnly?: boolean
+  ) => Promise<void>;
   filterCustomer: string;
   setFilterCustomer: (filterCustomer: string) => void;
 }
@@ -66,8 +78,11 @@ const OrderManager = ({
   onOrderCreate,
   onOrderUpdate,
   onOrderDelete,
+  onOrderHide,
+  onOrderShow,
   onCustomerCreate,
   fetchCustomers,
+  fetchOrders,
   filterCustomer,
   setFilterCustomer,
 }: OrderManagerProps) => {
@@ -80,6 +95,9 @@ const OrderManager = ({
   const [originalOrderItems, setOriginalOrderItems] = useState<OrderItemForm[]>(
     []
   );
+  const [showHiddenOrders, setShowHiddenOrders] = useState(false);
+  const [selectedOrders, setSelectedOrders] = useState<Set<string>>(new Set());
+  const [showTodayOnly, setShowTodayOnly] = useState(true);
 
   // Form states
   const [customerInput, setCustomerInput] = useState("");
@@ -114,6 +132,11 @@ const OrderManager = ({
     customer.name.toLowerCase().includes(customerInput.toLowerCase())
   );
 
+  const getTodayDate = () => {
+    const today = new Date();
+    return today.toISOString().split("T")[0];
+  };
+
   const filteredOrders = orders.filter((order) => {
     const matchesCustomer =
       !filterCustomer ||
@@ -122,7 +145,9 @@ const OrderManager = ({
     const matchesDateFrom =
       !filterDateFrom || order.order_date >= filterDateFrom;
     const matchesDateTo = !filterDateTo || order.order_date <= filterDateTo;
-    return matchesCustomer && matchesDateFrom && matchesDateTo;
+    const matchesToday = !showTodayOnly || order.order_date === getTodayDate();
+
+    return matchesCustomer && matchesDateFrom && matchesDateTo && matchesToday;
   });
 
   const handleCustomerInputChange = (value: string) => {
@@ -488,6 +513,124 @@ const OrderManager = ({
     }
   };
 
+  const handleHideOrder = async (orderId: string) => {
+    if (!confirm("Are you sure you want to hide this order?")) return;
+
+    try {
+      await onOrderHide(orderId);
+      alert("Order hidden successfully!");
+    } catch (error) {
+      console.error("Error hiding order:", error);
+      alert("Failed to hide order. Please try again.");
+    }
+  };
+
+  const handleShowOrder = async (orderId: string) => {
+    try {
+      await onOrderShow(orderId);
+      alert("Order shown successfully!");
+    } catch (error) {
+      console.error("Error showing order:", error);
+      alert("Failed to show order. Please try again.");
+    }
+  };
+
+  const toggleHiddenOrders = async () => {
+    const newShowHidden = !showHiddenOrders;
+    setShowHiddenOrders(newShowHidden);
+    await fetchOrders(newShowHidden, showTodayOnly);
+  };
+
+  const toggleTodayFilter = async () => {
+    const newShowTodayOnly = !showTodayOnly;
+    setShowTodayOnly(newShowTodayOnly);
+    await fetchOrders(showHiddenOrders, newShowTodayOnly);
+  };
+
+  const toggleOrderSelection = (orderId: string) => {
+    const newSelected = new Set(selectedOrders);
+    if (newSelected.has(orderId)) {
+      newSelected.delete(orderId);
+    } else {
+      newSelected.add(orderId);
+    }
+    setSelectedOrders(newSelected);
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedOrders.size === filteredOrders.length) {
+      setSelectedOrders(new Set());
+    } else {
+      setSelectedOrders(new Set(filteredOrders.map((order) => order.id)));
+    }
+  };
+
+  const handleBulkHide = async () => {
+    if (selectedOrders.size === 0) {
+      alert("Please select orders to hide");
+      return;
+    }
+
+    if (
+      !confirm(`Are you sure you want to hide ${selectedOrders.size} order(s)?`)
+    )
+      return;
+
+    try {
+      for (const orderId of selectedOrders) {
+        await onOrderHide(orderId);
+      }
+      setSelectedOrders(new Set());
+      alert(`${selectedOrders.size} order(s) hidden successfully!`);
+    } catch (error) {
+      console.error("Error hiding orders:", error);
+      alert("Failed to hide some orders. Please try again.");
+    }
+  };
+
+  const handleBulkShow = async () => {
+    if (selectedOrders.size === 0) {
+      alert("Please select orders to show");
+      return;
+    }
+
+    try {
+      for (const orderId of selectedOrders) {
+        await onOrderShow(orderId);
+      }
+      setSelectedOrders(new Set());
+      alert(`${selectedOrders.size} order(s) shown successfully!`);
+    } catch (error) {
+      console.error("Error showing orders:", error);
+      alert("Failed to show some orders. Please try again.");
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedOrders.size === 0) {
+      alert("Please select orders to delete");
+      return;
+    }
+
+    if (
+      !confirm(
+        `Are you sure you want to delete ${selectedOrders.size} order(s)? This action cannot be undone.`
+      )
+    )
+      return;
+
+    try {
+      for (const orderId of selectedOrders) {
+        await onOrderDelete(orderId);
+      }
+      setSelectedOrders(new Set());
+      alert(`${selectedOrders.size} order(s) deleted successfully!`);
+    } catch (error) {
+      console.error("Error deleting orders:", error);
+      alert("Failed to delete some orders. Please try again.");
+    }
+  };
+
   const handlePrintOrder = (order: Order) => {
     const printContent = `
       <div style="padding: 8px; font-family: Arial, sans-serif; font-size: 12px; line-height: 1.2;">
@@ -561,448 +704,508 @@ const OrderManager = ({
 
   return (
     <div className="space-y-4 lg:space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-end gap-4">
-        {/* <h2 className="text-xl lg:text-2xl font-bold">Order Management</h2> */}
-        <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
-          <DialogTrigger asChild>
-            <Button className="flex items-center space-x-2">
-              <Plus className="h-4 w-4" />
-              <span>Create New Order</span>
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="w-[95vw] max-w-4xl max-h-[90vh] overflow-y-auto p-6">
-            <DialogHeader className="pb-4">
-              <DialogTitle className="text-xl font-semibold">
-                Create New Order
-              </DialogTitle>
-            </DialogHeader>
-            <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                // handleCreateOrder();
-              }}
-              className="space-y-6"
-            >
-              {/* Customer Input with Suggestions */}
-              <div className="relative">
-                <Label htmlFor="customer-input">Customer Name</Label>
-                <Input
-                  id="customer-input"
-                  value={customerInput}
-                  onChange={(e) => handleCustomerInputChange(e.target.value)}
-                  onKeyDown={handleCustomerKeyDown}
-                  onFocus={() => setShowCustomerSuggestions(true)}
-                  placeholder="Type customer name..."
-                  className="w-full"
-                  autoComplete="off"
-                />
-                {showCustomerSuggestions &&
-                  customerInput &&
-                  filteredCustomers.length > 0 && (
-                    <div className="absolute z-10 w-full mt-1 bg-white border rounded-md shadow-lg max-h-40 overflow-y-auto">
-                      {filteredCustomers.slice(0, 5).map((customer, index) => (
-                        <div
-                          key={customer.id}
-                          data-customer-index={index}
-                          className={`p-2 cursor-pointer ${
-                            index === selectedCustomerIndex
-                              ? "bg-blue-100"
-                              : "hover:bg-gray-100"
-                          }`}
-                          onClick={() => handleCustomerSelect(customer)}
-                        >
-                          {customer.name}
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                {customerInput && !selectedCustomer && (
-                  <p className="text-sm text-blue-600 mt-1">
-                    New customer "{customerInput}" will be created
-                  </p>
-                )}
-              </div>
-
-              <div>
-                <Label htmlFor="color-code">Color Code</Label>
-                <Input
-                  id="color-code"
-                  value={colorCode}
-                  onChange={(e) => setColorCode(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") {
-                      e.preventDefault();
-                      const stockSearchInput =
-                        document.getElementById("stock-search");
-                      if (stockSearchInput) stockSearchInput.focus();
-                    }
-                  }}
-                  placeholder="Enter color code"
-                  autoComplete="off"
-                />
-              </div>
-
-              {/* Add Items Section */}
-              <div className="border rounded-lg p-4 space-y-4">
-                <h3 className="text-lg font-semibold">Add Items to Order</h3>
-
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div className="relative">
-                    <Label htmlFor="stock-search">Search Stock</Label>
-                    <Input
-                      id="stock-search"
-                      value={stockSearch}
-                      onChange={(e) => {
-                        setStockSearch(e.target.value);
-                        setShowStockSuggestions(true);
-                        setSelectedStockIndex(-1);
-                      }}
-                      onKeyDown={handleStockKeyDown}
-                      onFocus={() => setShowStockSuggestions(true)}
-                      placeholder="Search by name or code"
-                      autoComplete="off"
-                    />
-                    {showStockSuggestions &&
-                      stockSearch &&
-                      filteredStocks.length > 0 && (
-                        <div className="absolute z-10 w-full mt-1 bg-white border rounded-md shadow-lg max-h-40 overflow-y-auto">
-                          {filteredStocks.slice(0, 5).map((stock, index) => (
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        {/* Action Buttons */}
+        <div className="flex flex-wrap gap-2">
+          <Button
+            variant={showTodayOnly ? "default" : "outline"}
+            onClick={toggleTodayFilter}
+            className="flex items-center space-x-2"
+          >
+            <Calendar className="h-4 w-4" />
+            <span>Today's Orders</span>
+          </Button>
+          <Button
+            variant={showHiddenOrders ? "default" : "outline"}
+            onClick={toggleHiddenOrders}
+            className="flex items-center space-x-2"
+          >
+            <span>
+              {showHiddenOrders ? "Show Visible Orders" : "Show Hidden Orders"}
+            </span>
+          </Button>
+          <Dialog
+            open={isCreateDialogOpen}
+            onOpenChange={setIsCreateDialogOpen}
+          >
+            <DialogTrigger asChild>
+              <Button className="flex items-center space-x-2">
+                <Plus className="h-4 w-4" />
+                <span>Create New Order</span>
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="w-[95vw] max-w-4xl max-h-[90vh] overflow-y-auto p-6">
+              <DialogHeader className="pb-4">
+                <DialogTitle className="text-xl font-semibold">
+                  Create New Order
+                </DialogTitle>
+              </DialogHeader>
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                }}
+                className="space-y-6"
+              >
+                {/* Customer Input with Suggestions */}
+                <div className="relative">
+                  <Label htmlFor="customer-input">Customer Name</Label>
+                  <Input
+                    id="customer-input"
+                    value={customerInput}
+                    onChange={(e) => handleCustomerInputChange(e.target.value)}
+                    onKeyDown={handleCustomerKeyDown}
+                    onFocus={() => setShowCustomerSuggestions(true)}
+                    placeholder="Type customer name..."
+                    className="w-full"
+                    autoComplete="off"
+                  />
+                  {showCustomerSuggestions &&
+                    customerInput &&
+                    filteredCustomers.length > 0 && (
+                      <div className="absolute z-10 w-full mt-1 bg-white border rounded-md shadow-lg max-h-40 overflow-y-auto">
+                        {filteredCustomers
+                          .slice(0, 5)
+                          .map((customer, index) => (
                             <div
-                              key={stock.id}
-                              data-stock-index={index}
+                              key={customer.id}
+                              data-customer-index={index}
                               className={`p-2 cursor-pointer ${
-                                index === selectedStockIndex
+                                index === selectedCustomerIndex
                                   ? "bg-blue-100"
                                   : "hover:bg-gray-100"
                               }`}
-                              onClick={() => handleStockSelect(stock)}
+                              onClick={() => handleCustomerSelect(customer)}
                             >
-                              <div className="font-medium">{stock.name}</div>
-                              <div className="text-sm text-gray-600">
-                                {stock.code} - {stock.length} - {stock.quantity}{" "}
-                                available
-                              </div>
+                              {customer.name}
                             </div>
                           ))}
-                        </div>
-                      )}
-                  </div>
+                      </div>
+                    )}
+                  {customerInput && !selectedCustomer && (
+                    <p className="text-sm text-blue-600 mt-1">
+                      New customer "{customerInput}" will be created
+                    </p>
+                  )}
+                </div>
 
-                  <div>
-                    <Label htmlFor="pieces">Pieces</Label>
-                    <Input
-                      id="pieces"
-                      type="number"
-                      value={pieces === 0 ? "" : pieces}
-                      onChange={(e) => {
-                        const value = e.target.value;
-                        const newQuantity =
-                          value === "" ? 0 : parseInt(value) || 0;
-                        setPieces(newQuantity);
-                        if (selectedStock)
-                          validateStockQuantity(newQuantity, selectedStock);
-                      }}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter") {
-                          e.preventDefault();
-                          if (!isAddItemDisabled) {
-                            addItemToOrder();
+                <div>
+                  <Label htmlFor="color-code">Color Code</Label>
+                  <Input
+                    id="color-code"
+                    value={colorCode}
+                    onChange={(e) => setColorCode(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        const stockSearchInput =
+                          document.getElementById("stock-search");
+                        if (stockSearchInput) stockSearchInput.focus();
+                      }
+                    }}
+                    placeholder="Enter color code"
+                    autoComplete="off"
+                  />
+                </div>
+
+                {/* Add Items Section */}
+                <div className="border rounded-lg p-4 space-y-4">
+                  <h3 className="text-lg font-semibold">Add Items to Order</h3>
+
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="relative">
+                      <Label htmlFor="stock-search">Search Stock</Label>
+                      <Input
+                        id="stock-search"
+                        value={stockSearch}
+                        onChange={(e) => {
+                          setStockSearch(e.target.value);
+                          setShowStockSuggestions(true);
+                          setSelectedStockIndex(-1);
+                        }}
+                        onKeyDown={handleStockKeyDown}
+                        onFocus={() => setShowStockSuggestions(true)}
+                        placeholder="Search by name or code"
+                        autoComplete="off"
+                      />
+                      {showStockSuggestions &&
+                        stockSearch &&
+                        filteredStocks.length > 0 && (
+                          <div className="absolute z-10 w-full mt-1 bg-white border rounded-md shadow-lg max-h-40 overflow-y-auto">
+                            {filteredStocks.slice(0, 5).map((stock, index) => (
+                              <div
+                                key={stock.id}
+                                data-stock-index={index}
+                                className={`p-2 cursor-pointer ${
+                                  index === selectedStockIndex
+                                    ? "bg-blue-100"
+                                    : "hover:bg-gray-100"
+                                }`}
+                                onClick={() => handleStockSelect(stock)}
+                              >
+                                <div className="font-medium">{stock.name}</div>
+                                <div className="text-sm text-gray-600">
+                                  {stock.code} - {stock.length} -{" "}
+                                  {stock.quantity} available
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                    </div>
+
+                    <div>
+                      <Label htmlFor="pieces">Pieces</Label>
+                      <Input
+                        id="pieces"
+                        type="number"
+                        value={pieces === 0 ? "" : pieces}
+                        onChange={(e) => {
+                          const value = e.target.value;
+                          const newQuantity =
+                            value === "" ? 0 : parseInt(value) || 0;
+                          setPieces(newQuantity);
+                          if (selectedStock)
+                            validateStockQuantity(newQuantity, selectedStock);
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            e.preventDefault();
+                            if (!isAddItemDisabled) {
+                              addItemToOrder();
+                            }
                           }
-                        }
-                      }}
-                      placeholder="Enter quantity"
-                      min="1"
-                      autoComplete="off"
-                    />
-                    {stockError && (
-                      <p className="text-sm text-red-600 mt-1">{stockError}</p>
-                    )}
-                  </div>
-
-                  <div className="flex items-end">
-                    <Button
-                      onClick={addItemToOrder}
-                      className="w-full"
-                      disabled={isAddItemDisabled}
-                    >
-                      Add Item
-                    </Button>
-                  </div>
-                </div>
-
-                {/* Current Order Items */}
-                {orderItems.length > 0 && (
-                  <div className="mt-4">
-                    <h4 className="font-medium mb-2">Order Items:</h4>
-                    <div className="space-y-2">
-                      {orderItems.map((item, index) => (
-                        <div
-                          key={index}
-                          className="flex items-center justify-between bg-gray-50 p-3 rounded"
-                        >
-                          <div>
-                            <span className="font-medium">
-                              {item.stock_name}
-                            </span>
-                            <span className="text-gray-600 ml-2">
-                              ({item.stock_code}) - {item.stock_length} -{" "}
-                              {item.pieces_used} pieces
-                            </span>
-                          </div>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => removeItemFromOrder(index)}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              <div className="flex justify-end space-x-2">
-                <Button
-                  variant="outline"
-                  onClick={() => setIsCreateDialogOpen(false)}
-                  disabled={isCreatingOrder}
-                >
-                  Cancel
-                </Button>
-                <Button
-                  onClick={handleCreateOrder}
-                  disabled={isCreatingOrder || orderItems.length === 0}
-                >
-                  {isCreatingOrder ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Creating...
-                    </>
-                  ) : (
-                    "Create Order"
-                  )}
-                </Button>
-              </div>
-            </form>
-          </DialogContent>
-        </Dialog>
-
-        {/* Edit Order Dialog */}
-        <Dialog
-          open={isEditDialogOpen}
-          onOpenChange={(open) => {
-            if (!open) {
-              handleCancelEdit();
-            } else {
-              setIsEditDialogOpen(open);
-            }
-          }}
-        >
-          <DialogContent className="w-[95vw] max-w-4xl max-h-[90vh] overflow-y-auto p-6">
-            <DialogHeader className="pb-4">
-              <DialogTitle className="text-xl font-semibold">
-                Edit Order
-              </DialogTitle>
-            </DialogHeader>
-            <form
-              onSubmit={(e) => {
-                e.preventDefault();
-              }}
-              className="space-y-6"
-            >
-              {/* Customer Input with Suggestions */}
-              <div className="relative">
-                <Label htmlFor="edit-customer-input">Customer Name</Label>
-                <Input
-                  id="edit-customer-input"
-                  value={customerInput}
-                  onChange={(e) => handleCustomerInputChange(e.target.value)}
-                  onKeyDown={handleCustomerKeyDown}
-                  onFocus={() => setShowCustomerSuggestions(true)}
-                  placeholder="Type customer name..."
-                  className="w-full"
-                  autoComplete="off"
-                />
-                {showCustomerSuggestions &&
-                  customerInput &&
-                  filteredCustomers.length > 0 && (
-                    <div className="absolute z-10 w-full mt-1 bg-white border rounded-md shadow-lg max-h-40 overflow-y-auto">
-                      {filteredCustomers.slice(0, 5).map((customer, index) => (
-                        <div
-                          key={customer.id}
-                          data-customer-index={index}
-                          className={`p-2 cursor-pointer ${
-                            index === selectedCustomerIndex
-                              ? "bg-blue-100"
-                              : "hover:bg-gray-100"
-                          }`}
-                          onClick={() => handleCustomerSelect(customer)}
-                        >
-                          {customer.name}
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                {customerInput && !selectedCustomer && (
-                  <p className="text-sm text-blue-600 mt-1">
-                    New customer "{customerInput}" will be created
-                  </p>
-                )}
-              </div>
-
-              <div>
-                <Label htmlFor="edit-color-code">Color Code</Label>
-                <Input
-                  id="edit-color-code"
-                  value={colorCode}
-                  onChange={(e) => setColorCode(e.target.value)}
-                  placeholder="Enter color code"
-                  autoComplete="off"
-                />
-              </div>
-
-              {/* Add Items Section */}
-              <div className="border rounded-lg p-4 space-y-4">
-                <h3 className="text-lg font-semibold">Edit Order Items</h3>
-
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div className="relative">
-                    <Label htmlFor="edit-stock-search">Search Stock</Label>
-                    <Input
-                      id="edit-stock-search"
-                      value={stockSearch}
-                      onChange={(e) => {
-                        setStockSearch(e.target.value);
-                        setShowStockSuggestions(true);
-                        setSelectedStockIndex(-1);
-                      }}
-                      onKeyDown={handleStockKeyDown}
-                      onFocus={() => setShowStockSuggestions(true)}
-                      placeholder="Search by name or code"
-                      autoComplete="off"
-                    />
-                    {showStockSuggestions &&
-                      stockSearch &&
-                      filteredStocks.length > 0 && (
-                        <div className="absolute z-10 w-full mt-1 bg-white border rounded-md shadow-lg max-h-40 overflow-y-auto">
-                          {filteredStocks.slice(0, 5).map((stock, index) => (
-                            <div
-                              key={stock.id}
-                              data-stock-index={index}
-                              className={`p-2 cursor-pointer ${
-                                index === selectedStockIndex
-                                  ? "bg-blue-100"
-                                  : "hover:bg-gray-100"
-                              }`}
-                              onClick={() => handleStockSelect(stock)}
-                            >
-                              <div className="font-medium">{stock.name}</div>
-                              <div className="text-sm text-gray-600">
-                                {stock.code} - {stock.length} - {stock.quantity}{" "}
-                                available
-                              </div>
-                            </div>
-                          ))}
-                        </div>
+                        }}
+                        placeholder="Enter quantity"
+                        min="1"
+                        autoComplete="off"
+                      />
+                      {stockError && (
+                        <p className="text-sm text-red-600 mt-1">
+                          {stockError}
+                        </p>
                       )}
-                  </div>
+                    </div>
 
-                  <div>
-                    <Label htmlFor="edit-pieces">Pieces</Label>
-                    <Input
-                      id="edit-pieces"
-                      type="number"
-                      value={pieces === 0 ? "" : pieces}
-                      onChange={(e) => {
-                        const value = e.target.value;
-                        const newQuantity =
-                          value === "" ? 0 : parseInt(value) || 0;
-                        setPieces(newQuantity);
-                        if (selectedStock)
-                          validateStockQuantity(newQuantity, selectedStock);
-                      }}
-                      placeholder="Enter quantity"
-                      min="1"
-                      autoComplete="off"
-                    />
-                    {stockError && (
-                      <p className="text-sm text-red-600 mt-1">{stockError}</p>
-                    )}
-                  </div>
-
-                  <div className="flex items-end">
-                    <Button
-                      onClick={addItemToOrder}
-                      className="w-full"
-                      disabled={isAddItemDisabled}
-                    >
-                      Add Item
-                    </Button>
-                  </div>
-                </div>
-
-                {/* Current Order Items */}
-                {orderItems.length > 0 && (
-                  <div className="mt-4">
-                    <h4 className="font-medium mb-2">Order Items:</h4>
-                    <div className="space-y-2">
-                      {orderItems.map((item, index) => (
-                        <div
-                          key={index}
-                          className="flex items-center justify-between bg-gray-50 p-3 rounded"
-                        >
-                          <div>
-                            <span className="font-medium">
-                              {item.stock_name}
-                            </span>
-                            <span className="text-gray-600 ml-2">
-                              ({item.stock_code}) - {item.stock_length} -{" "}
-                              {item.pieces_used} pieces
-                            </span>
-                          </div>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => removeItemFromOrder(index)}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      ))}
+                    <div className="flex items-end">
+                      <Button
+                        onClick={addItemToOrder}
+                        className="w-full"
+                        disabled={isAddItemDisabled}
+                      >
+                        Add Item
+                      </Button>
                     </div>
                   </div>
-                )}
-              </div>
 
-              <div className="flex justify-end space-x-2">
-                <Button
-                  variant="outline"
-                  onClick={handleCancelEdit}
-                  disabled={isCreatingOrder}
-                >
-                  Cancel
-                </Button>
-                <Button
-                  onClick={handleUpdateOrder}
-                  disabled={isCreatingOrder || orderItems.length === 0}
-                >
-                  {isCreatingOrder ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Updating...
-                    </>
-                  ) : (
-                    "Update Order"
+                  {/* Current Order Items */}
+                  {orderItems.length > 0 && (
+                    <div className="mt-4">
+                      <h4 className="font-medium mb-2">Order Items:</h4>
+                      <div className="space-y-2">
+                        {orderItems.map((item, index) => (
+                          <div
+                            key={index}
+                            className="flex items-center justify-between bg-gray-50 p-3 rounded"
+                          >
+                            <div>
+                              <span className="font-medium">
+                                {item.stock_name}
+                              </span>
+                              <span className="text-gray-600 ml-2">
+                                ({item.stock_code}) - {item.stock_length} -{" "}
+                                {item.pieces_used} pieces
+                              </span>
+                            </div>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => removeItemFromOrder(index)}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
                   )}
-                </Button>
-              </div>
-            </form>
-          </DialogContent>
-        </Dialog>
+                </div>
+
+                <div className="flex justify-end space-x-2">
+                  <Button
+                    variant="outline"
+                    onClick={() => setIsCreateDialogOpen(false)}
+                    disabled={isCreatingOrder}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    onClick={handleCreateOrder}
+                    disabled={isCreatingOrder || orderItems.length === 0}
+                  >
+                    {isCreatingOrder ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Creating...
+                      </>
+                    ) : (
+                      "Create Order"
+                    )}
+                  </Button>
+                </div>
+              </form>
+            </DialogContent>
+          </Dialog>
+        </div>
+        {/* Bulk Actions */}
+        {selectedOrders.size > 0 && (
+          <div className="flex flex-wrap gap-2">
+            <span className="text-sm text-gray-600 self-center">
+              {selectedOrders.size} order(s) selected
+            </span>
+            {showHiddenOrders ? (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleBulkShow}
+                className="flex items-center space-x-1"
+              >
+                <Eye className="h-4 w-4" />
+                <span>Show Selected</span>
+              </Button>
+            ) : (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleBulkHide}
+                className="flex items-center space-x-1"
+              >
+                <EyeOff className="h-4 w-4" />
+                <span>Hide Selected</span>
+              </Button>
+            )}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleBulkDelete}
+              className="flex items-center space-x-1 text-red-600 hover:text-red-700"
+            >
+              <Trash2 className="h-4 w-4" />
+              <span>Delete Selected</span>
+            </Button>
+          </div>
+        )}
       </div>
 
+      {/* Edit Order Dialog */}
+      <Dialog
+        open={isEditDialogOpen}
+        onOpenChange={(open) => {
+          if (!open) {
+            handleCancelEdit();
+          } else {
+            setIsEditDialogOpen(open);
+          }
+        }}
+      >
+        <DialogContent className="w-[95vw] max-w-4xl max-h-[90vh] overflow-y-auto p-6">
+          <DialogHeader className="pb-4">
+            <DialogTitle className="text-xl font-semibold">
+              Edit Order
+            </DialogTitle>
+          </DialogHeader>
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+            }}
+            className="space-y-6"
+          >
+            {/* Customer Input with Suggestions */}
+            <div className="relative">
+              <Label htmlFor="edit-customer-input">Customer Name</Label>
+              <Input
+                id="edit-customer-input"
+                value={customerInput}
+                onChange={(e) => handleCustomerInputChange(e.target.value)}
+                onKeyDown={handleCustomerKeyDown}
+                onFocus={() => setShowCustomerSuggestions(true)}
+                placeholder="Type customer name..."
+                className="w-full"
+                autoComplete="off"
+              />
+              {showCustomerSuggestions &&
+                customerInput &&
+                filteredCustomers.length > 0 && (
+                  <div className="absolute z-10 w-full mt-1 bg-white border rounded-md shadow-lg max-h-40 overflow-y-auto">
+                    {filteredCustomers.slice(0, 5).map((customer, index) => (
+                      <div
+                        key={customer.id}
+                        data-customer-index={index}
+                        className={`p-2 cursor-pointer ${
+                          index === selectedCustomerIndex
+                            ? "bg-blue-100"
+                            : "hover:bg-gray-100"
+                        }`}
+                        onClick={() => handleCustomerSelect(customer)}
+                      >
+                        {customer.name}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              {customerInput && !selectedCustomer && (
+                <p className="text-sm text-blue-600 mt-1">
+                  New customer "{customerInput}" will be created
+                </p>
+              )}
+            </div>
+
+            <div>
+              <Label htmlFor="edit-color-code">Color Code</Label>
+              <Input
+                id="edit-color-code"
+                value={colorCode}
+                onChange={(e) => setColorCode(e.target.value)}
+                placeholder="Enter color code"
+                autoComplete="off"
+              />
+            </div>
+
+            {/* Add Items Section */}
+            <div className="border rounded-lg p-4 space-y-4">
+              <h3 className="text-lg font-semibold">Edit Order Items</h3>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="relative">
+                  <Label htmlFor="edit-stock-search">Search Stock</Label>
+                  <Input
+                    id="edit-stock-search"
+                    value={stockSearch}
+                    onChange={(e) => {
+                      setStockSearch(e.target.value);
+                      setShowStockSuggestions(true);
+                      setSelectedStockIndex(-1);
+                    }}
+                    onKeyDown={handleStockKeyDown}
+                    onFocus={() => setShowStockSuggestions(true)}
+                    placeholder="Search by name or code"
+                    autoComplete="off"
+                  />
+                  {showStockSuggestions &&
+                    stockSearch &&
+                    filteredStocks.length > 0 && (
+                      <div className="absolute z-10 w-full mt-1 bg-white border rounded-md shadow-lg max-h-40 overflow-y-auto">
+                        {filteredStocks.slice(0, 5).map((stock, index) => (
+                          <div
+                            key={stock.id}
+                            data-stock-index={index}
+                            className={`p-2 cursor-pointer ${
+                              index === selectedStockIndex
+                                ? "bg-blue-100"
+                                : "hover:bg-gray-100"
+                            }`}
+                            onClick={() => handleStockSelect(stock)}
+                          >
+                            <div className="font-medium">{stock.name}</div>
+                            <div className="text-sm text-gray-600">
+                              {stock.code} - {stock.length} - {stock.quantity}{" "}
+                              available
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                </div>
+
+                <div>
+                  <Label htmlFor="edit-pieces">Pieces</Label>
+                  <Input
+                    id="edit-pieces"
+                    type="number"
+                    value={pieces === 0 ? "" : pieces}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      const newQuantity =
+                        value === "" ? 0 : parseInt(value) || 0;
+                      setPieces(newQuantity);
+                      if (selectedStock)
+                        validateStockQuantity(newQuantity, selectedStock);
+                    }}
+                    placeholder="Enter quantity"
+                    min="1"
+                    autoComplete="off"
+                  />
+                  {stockError && (
+                    <p className="text-sm text-red-600 mt-1">{stockError}</p>
+                  )}
+                </div>
+
+                <div className="flex items-end">
+                  <Button
+                    onClick={addItemToOrder}
+                    className="w-full"
+                    disabled={isAddItemDisabled}
+                  >
+                    Add Item
+                  </Button>
+                </div>
+              </div>
+
+              {/* Current Order Items */}
+              {orderItems.length > 0 && (
+                <div className="mt-4">
+                  <h4 className="font-medium mb-2">Order Items:</h4>
+                  <div className="space-y-2">
+                    {orderItems.map((item, index) => (
+                      <div
+                        key={index}
+                        className="flex items-center justify-between bg-gray-50 p-3 rounded"
+                      >
+                        <div>
+                          <span className="font-medium">{item.stock_name}</span>
+                          <span className="text-gray-600 ml-2">
+                            ({item.stock_code}) - {item.stock_length} -{" "}
+                            {item.pieces_used} pieces
+                          </span>
+                        </div>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => removeItemFromOrder(index)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="flex justify-end space-x-2">
+              <Button
+                variant="outline"
+                onClick={handleCancelEdit}
+                disabled={isCreatingOrder}
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleUpdateOrder}
+                disabled={isCreatingOrder || orderItems.length === 0}
+              >
+                {isCreatingOrder ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Updating...
+                  </>
+                ) : (
+                  "Update Order"
+                )}
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
       {/* Filters */}
       <Card>
         <CardHeader>
@@ -1053,73 +1256,109 @@ const OrderManager = ({
       {/* Orders List */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg lg:text-xl">Recent Orders</CardTitle>
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-lg lg:text-xl">Recent Orders</CardTitle>
+            {filteredOrders.length > 0 && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={toggleSelectAll}
+                className="flex items-center space-x-2"
+              >
+                {selectedOrders.size === filteredOrders.length ? (
+                  <CheckSquare className="h-4 w-4" />
+                ) : (
+                  <Square className="h-4 w-4" />
+                )}
+                <span>Select All</span>
+              </Button>
+            )}
+          </div>
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
             {filteredOrders.map((order) => (
-              <div key={order.id} className="border rounded-lg p-4">
+              <div
+                key={order.id}
+                className={cn(
+                  "border rounded-lg p-4",
+                  selectedOrders.has(order.id) && "border-blue-500 bg-blue-50",
+                  order.is_hidden && "border-black"
+                )}
+              >
                 <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-2">
-                      <h3 className="font-semibold text-lg">
-                        {order.customer_name}
-                      </h3>
-                    </div>
-                    <div className="flex items-center gap-4 mb-3">
-                      {/* <p className="text-sm text-gray-600">
-                        <span className="font-medium">Order ID:</span>{" "}
-                        {order.id.slice(-8)}
-                      </p> */}
-                      <p className="text-sm text-gray-600">
-                        <span className="font-medium">Date:</span>{" "}
-                        {order.order_date}
-                      </p>
-                    </div>
-                    <div className="space-y-2">
-                      <h4 className="font-medium text-sm text-gray-700">
-                        Items:
-                      </h4>
-                      {order.order_items?.map((item, index) => (
-                        <div
-                          key={index}
-                          className="flex items-center justify-start gap-4 bg-gray-50 p-2 rounded text-sm"
-                        >
-                          <div className="">
-                            <span className="font-medium">
-                              ({item.stock_code || "N/A"}) {item.stock_name}
-                            </span>
-                            <span className="text-gray-600 ml-2">
-                              - {item.stock_length || "N/A"}
-                            </span>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            {order.color_code && (
+                  <div className="flex items-start gap-3 flex-1">
+                    {/* Checkbox */}
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => toggleOrderSelection(order.id)}
+                      className="p-1 h-auto"
+                    >
+                      {selectedOrders.has(order.id) ? (
+                        <CheckSquare className="h-4 w-4 text-blue-600" />
+                      ) : (
+                        <Square className="h-4 w-4" />
+                      )}
+                    </Button>
+
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-2">
+                        <h3 className="font-semibold text-lg">
+                          {order.customer_name}
+                        </h3>
+                      </div>
+                      <div className="flex items-center gap-4 mb-3">
+                        <p className="text-sm text-gray-600">
+                          <span className="font-medium">Date:</span>{" "}
+                          {order.order_date}
+                        </p>
+                      </div>
+                      <div className="space-y-2">
+                        <h4 className="font-medium text-sm text-gray-700">
+                          Items:
+                        </h4>
+                        {order.order_items?.map((item, index) => (
+                          <div
+                            key={index}
+                            className="flex items-center justify-start gap-4 bg-gray-50 p-2 rounded text-sm"
+                          >
+                            <div className="">
+                              <span className="font-medium">
+                                ({item.stock_code || "N/A"}) {item.stock_name}
+                              </span>
+                              <span className="text-gray-600 ml-2">
+                                - {item.stock_length || "N/A"}
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              {order.color_code && (
+                                <Badge
+                                  variant="secondary"
+                                  className="bg-blue-100 text-blue-800"
+                                >
+                                  Color: {order.color_code}
+                                </Badge>
+                              )}
                               <Badge
-                                variant="secondary"
-                                className="bg-blue-100 text-blue-800"
+                                variant="outline"
+                                className="bg-green-50 text-green-700 border-green-200"
                               >
-                                Color: {order.color_code}
+                                {item.pieces_used} pcs
                               </Badge>
-                            )}
-                            <Badge
-                              variant="outline"
-                              className="bg-green-50 text-green-700 border-green-200"
-                            >
-                              {item.pieces_used} pcs
-                            </Badge>
+                            </div>
                           </div>
+                        ))}
+                        <div className="mt-2 pt-2 border-t">
+                          <span className="text-sm font-medium text-gray-700">
+                            Total:{" "}
+                            {order.order_items?.reduce(
+                              (total, item) => total + item.pieces_used,
+                              0
+                            ) || 0}{" "}
+                            pieces
+                          </span>
                         </div>
-                      ))}
-                      <div className="mt-2 pt-2 border-t">
-                        <span className="text-sm font-medium text-gray-700">
-                          Total:{" "}
-                          {order.order_items?.reduce(
-                            (total, item) => total + item.pieces_used,
-                            0
-                          ) || 0}{" "}
-                          pieces
-                        </span>
                       </div>
                     </div>
                   </div>
@@ -1138,6 +1377,25 @@ const OrderManager = ({
                     >
                       <Edit className="h-4 w-4" />
                     </Button>
+                    {showHiddenOrders ? (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleShowOrder(order.id)}
+                        title="Show Order"
+                      >
+                        <Eye className="h-4 w-4" />
+                      </Button>
+                    ) : (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleHideOrder(order.id)}
+                        title="Hide Order"
+                      >
+                        <EyeOff className="h-4 w-4" />
+                      </Button>
+                    )}
                     <Button
                       variant="outline"
                       size="sm"

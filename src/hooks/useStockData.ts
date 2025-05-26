@@ -34,6 +34,7 @@ export interface Order {
   color_code?: string;
   customer_name?: string;
   order_items?: OrderItem[];
+  is_hidden?: boolean;
 }
 
 export const useStockData = () => {
@@ -70,12 +71,12 @@ export const useStockData = () => {
     }
   };
 
-  const fetchOrders = async () => {
+  const fetchOrders = async (
+    includeHidden: boolean = false,
+    showTodayOnly: boolean = true
+  ) => {
     try {
-      const { data: ordersData, error: ordersError } = await supabase
-        .from("orders")
-        .select(
-          `
+      let query = supabase.from("orders").select(`
           *,
           customers(name),
           order_items(
@@ -84,14 +85,26 @@ export const useStockData = () => {
             pieces_used,
             stocks(name, code, length)
           )
-        `
-        )
-        .order("order_date", { ascending: false });
+        `);
+
+      if (!includeHidden) {
+        query = query.eq("is_hidden", false);
+      }
+
+      if (showTodayOnly) {
+        const today = new Date().toISOString().split("T")[0];
+        query = query.eq("order_date", today);
+      }
+
+      const { data: ordersData, error: ordersError } = await query.order(
+        "order_date",
+        { ascending: false }
+      );
 
       if (ordersError) throw ordersError;
 
-      const formattedOrders =
-        ordersData?.map((order) => ({
+      const formattedOrders: Order[] =
+        ordersData?.map((order: any) => ({
           ...order,
           customer_name: order.customers?.name,
           order_items: order.order_items?.map((item: any) => ({
@@ -240,7 +253,11 @@ export const useStockData = () => {
   useEffect(() => {
     const loadData = async () => {
       setLoading(true);
-      await Promise.all([fetchStocks(), fetchCustomers(), fetchOrders()]);
+      await Promise.all([
+        fetchStocks(),
+        fetchCustomers(),
+        fetchOrders(false, true),
+      ]);
       setLoading(false);
     };
 
@@ -413,6 +430,40 @@ export const useStockData = () => {
     }
   };
 
+  const hideOrder = async (orderId: string) => {
+    try {
+      const { error } = await supabase
+        .from("orders")
+        .update({ is_hidden: true })
+        .eq("id", orderId);
+
+      if (error) throw error;
+
+      // Refresh orders to update the UI
+      await fetchOrders();
+    } catch (error) {
+      console.error("Error hiding order:", error);
+      throw error;
+    }
+  };
+
+  const showOrder = async (orderId: string) => {
+    try {
+      const { error } = await supabase
+        .from("orders")
+        .update({ is_hidden: false })
+        .eq("id", orderId);
+
+      if (error) throw error;
+
+      // Refresh orders to update the UI
+      await fetchOrders();
+    } catch (error) {
+      console.error("Error showing order:", error);
+      throw error;
+    }
+  };
+
   return {
     stocks,
     customers,
@@ -424,6 +475,8 @@ export const useStockData = () => {
     deleteOrder,
     deleteStock,
     updateOrder,
+    hideOrder,
+    showOrder,
     fetchStocks,
     fetchCustomers,
     fetchOrders,

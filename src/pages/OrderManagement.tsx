@@ -14,8 +14,11 @@ const OrderManagement = () => {
     createOrder,
     updateOrder,
     deleteOrder,
+    hideOrder,
+    showOrder,
     createCustomer,
     fetchCustomers,
+    fetchOrders,
   } = useStockData();
   const lowStockCount = stocks.filter((stock) => stock.quantity < 50).length;
   const [searchTerm, setSearchTerm] = useState("");
@@ -44,8 +47,11 @@ const OrderManagement = () => {
         onOrderCreate={createOrder}
         onOrderUpdate={updateOrder}
         onOrderDelete={deleteOrder}
+        onOrderHide={hideOrder}
+        onOrderShow={showOrder}
         onCustomerCreate={createCustomer}
         fetchCustomers={fetchCustomers}
+        fetchOrders={fetchOrders}
         filterCustomer={searchTerm}
         setFilterCustomer={setSearchTerm}
       />

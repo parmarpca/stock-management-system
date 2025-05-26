@@ -66,6 +66,7 @@ export type Database = {
           customer_id: string;
           order_date: string;
           color_code: string | null;
+          is_hidden: boolean;
           created_at: string;
           updated_at: string;
         };
@@ -74,6 +75,7 @@ export type Database = {
           customer_id: string;
           order_date?: string;
           color_code?: string | null;
+          is_hidden?: boolean;
           created_at?: string;
           updated_at?: string;
         };
@@ -82,6 +84,7 @@ export type Database = {
           customer_id?: string;
           order_date?: string;
           color_code?: string | null;
+          is_hidden?: boolean;
           created_at?: string;
           updated_at?: string;
         };
