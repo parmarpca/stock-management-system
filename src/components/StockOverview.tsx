@@ -357,7 +357,7 @@ const StockOverview = ({
           ${sortedStocks
             .map(
               (stock) => `
-            <div style="margin-bottom: 3px; border-bottom: 1px dotted #ccc; padding-bottom: 2px;">
+            <div style="margin-bottom: 7px; padding-bottom: 7px; border-bottom: 1px dotted #ccc; ">
               <div style="font-weight: 500;"><span style="font-weight: bold;">${
                 stock.code
               }</span> - ${stock.name}</div>
