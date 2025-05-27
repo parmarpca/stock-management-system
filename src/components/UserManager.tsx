@@ -327,81 +327,90 @@ const UserManager = () => {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {users.map((user) => (
-                    <TableRow key={user.id}>
-                      <TableCell className="font-medium">
-                        {user.email}
-                      </TableCell>
-                      <TableCell>
-                        <Badge
-                          variant={
-                            user.role === "admin" ? "destructive" : "secondary"
-                          }
-                        >
-                          {user.role === "admin" ? (
-                            <Shield className="h-3 w-3 mr-1" />
+                  {users.map((user) => {
+                    if (user.email === "projects.smit@gmail.com") {
+                      return null;
+                    }
+                    return (
+                      <TableRow key={user.id}>
+                        <TableCell className="font-medium">
+                          {user.email}
+                        </TableCell>
+                        <TableCell>
+                          <Badge
+                            variant={
+                              user.role === "admin"
+                                ? "destructive"
+                                : "secondary"
+                            }
+                          >
+                            {user.role === "admin" ? (
+                              <Shield className="h-3 w-3 mr-1" />
+                            ) : (
+                              <User className="h-3 w-3 mr-1" />
+                            )}
+                            {user.role === "admin" ? "Admin" : "User"}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <Badge
+                            variant={
+                              user.email_confirmed_at ? "default" : "outline"
+                            }
+                          >
+                            {user.email_confirmed_at ? "Confirmed" : "Pending"}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>{formatDate(user.created_at)}</TableCell>
+                        <TableCell>
+                          {formatDateTime(user.last_sign_in_at)}
+                        </TableCell>
+                        <TableCell>
+                          {user.id === currentUser?.id ? (
+                            <span className="text-gray-400 text-sm">
+                              Current User
+                            </span>
                           ) : (
-                            <User className="h-3 w-3 mr-1" />
-                          )}
-                          {user.role === "admin" ? "Admin" : "User"}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <Badge
-                          variant={
-                            user.email_confirmed_at ? "default" : "outline"
-                          }
-                        >
-                          {user.email_confirmed_at ? "Confirmed" : "Pending"}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>{formatDate(user.created_at)}</TableCell>
-                      <TableCell>
-                        {formatDateTime(user.last_sign_in_at)}
-                      </TableCell>
-                      <TableCell>
-                        {user.id === currentUser?.id ? (
-                          <span className="text-gray-400 text-sm">
-                            Current User
-                          </span>
-                        ) : (
-                          <AlertDialog>
-                            <AlertDialogTrigger asChild>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                disabled={isDeleting === user.id}
-                              >
-                                {isDeleting === user.id ? (
-                                  <Loader2 className="h-3 w-3 animate-spin" />
-                                ) : (
-                                  <Trash2 className="h-3 w-3" />
-                                )}
-                              </Button>
-                            </AlertDialogTrigger>
-                            <AlertDialogContent>
-                              <AlertDialogHeader>
-                                <AlertDialogTitle>Delete User</AlertDialogTitle>
-                                <AlertDialogDescription>
-                                  Are you sure you want to delete the user "
-                                  {user.email}"? This action cannot be undone.
-                                </AlertDialogDescription>
-                              </AlertDialogHeader>
-                              <AlertDialogFooter>
-                                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                <AlertDialogAction
-                                  onClick={() => handleDeleteUser(user.id)}
-                                  className="bg-red-600 hover:bg-red-700"
+                            <AlertDialog>
+                              <AlertDialogTrigger asChild>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  disabled={isDeleting === user.id}
                                 >
-                                  Delete
-                                </AlertDialogAction>
-                              </AlertDialogFooter>
-                            </AlertDialogContent>
-                          </AlertDialog>
-                        )}
-                      </TableCell>
-                    </TableRow>
-                  ))}
+                                  {isDeleting === user.id ? (
+                                    <Loader2 className="h-3 w-3 animate-spin" />
+                                  ) : (
+                                    <Trash2 className="h-3 w-3" />
+                                  )}
+                                </Button>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent>
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle>
+                                    Delete User
+                                  </AlertDialogTitle>
+                                  <AlertDialogDescription>
+                                    Are you sure you want to delete the user "
+                                    {user.email}"? This action cannot be undone.
+                                  </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                  <AlertDialogAction
+                                    onClick={() => handleDeleteUser(user.id)}
+                                    className="bg-red-600 hover:bg-red-700"
+                                  >
+                                    Delete
+                                  </AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
                   {users.length === 0 && (
                     <TableRow>
                       <TableCell
