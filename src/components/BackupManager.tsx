@@ -78,19 +78,25 @@ const BackupManager = () => {
     setIsDownloading(true);
     try {
       // Fetch all data from all tables
-      const [stocksResult, customersResult, ordersResult, orderItemsResult] =
-        await Promise.all([
-          supabase.from("stocks").select("*"),
-          supabase.from("customers").select("*"),
-          supabase.from("orders").select("*"),
-          supabase.from("order_items").select("*"),
-        ]);
+      const [
+        stocksResult,
+        customersResult,
+        ordersResult,
+        orderItemsResult,
+        stockHistoryResult,
+      ] = await Promise.all([
+        supabase.from("stocks").select("*"),
+        supabase.from("customers").select("*"),
+        supabase.from("orders").select("*"),
+        supabase.from("order_items").select("*"),
+        supabase.from("stock_history").select("*"),
+      ]);
 
       if (stocksResult.error) throw stocksResult.error;
       if (customersResult.error) throw customersResult.error;
       if (ordersResult.error) throw ordersResult.error;
       if (orderItemsResult.error) throw orderItemsResult.error;
-
+      if (stockHistoryResult.error) throw stockHistoryResult.error;
       const backupData = {
         timestamp: new Date().toISOString(),
         version: "2.0",
@@ -100,6 +106,7 @@ const BackupManager = () => {
           customers: customersResult.data,
           orders: ordersResult.data,
           order_items: orderItemsResult.data,
+          stock_history: stockHistoryResult.data,
         },
       };
 
@@ -168,9 +175,6 @@ const BackupManager = () => {
             restorePassword
           );
           backupData = JSON.parse(decryptedData);
-        } else {
-          // Legacy JSON backup (for backward compatibility)
-          backupData = encryptedBackup;
         }
       } catch (error) {
         throw new Error("Invalid backup file format or incorrect password");
@@ -208,6 +212,11 @@ const BackupManager = () => {
         .from("stocks")
         .delete()
         .neq("id", "00000000-0000-0000-0000-000000000000");
+
+      await supabase
+        .from("stock_history")
+        .delete()
+        .neq("id", "00000000-0000-0000-0000-000000000000");
       await supabase
         .from("customers")
         .delete()
@@ -240,6 +249,13 @@ const BackupManager = () => {
           .from("order_items")
           .insert(backupData.data.order_items);
         if (orderItemsError) throw orderItemsError;
+      }
+
+      if (backupData.data.stock_history.length > 0) {
+        const { error: stockHistoryError } = await supabase
+          .from("stock_history")
+          .insert(backupData.data.stock_history);
+        if (stockHistoryError) throw stockHistoryError;
       }
 
       alert(
