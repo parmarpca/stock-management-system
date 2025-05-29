@@ -725,7 +725,7 @@ const OrderManager = ({
             <style>
               @media print {
                 body { margin: 0; }
-                @page { size: B5; margin: 10mm; }
+                @page { size: A4; margin: 10mm; }
               }
               body { font-family: Arial, sans-serif; }
               table { page-break-inside: avoid; }
@@ -864,7 +864,7 @@ const OrderManager = ({
             <style>
               @media print {
                 body { margin: 0; }
-                @page { size: B5; margin: 10mm; }
+                @page { size: A4; margin: 10mm; }
               }
               body { font-family: Arial, sans-serif; }
               table { page-break-inside: avoid; }
