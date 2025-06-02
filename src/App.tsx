@@ -12,6 +12,7 @@ import OrderManagement from "./pages/OrderManagement";
 import QuotationManagement from "./pages/QuotationManagement";
 import UserManagement from "./pages/UserManagement";
 import BackupManagement from "./pages/BackupManagement";
+import CompanySettings from "./pages/CompanySettings";
 import Login from "./pages/Login";
 import NotFound from "./pages/NotFound";
 
@@ -71,6 +72,14 @@ const App = () => (
               element={
                 <ProtectedRoute adminOnly>
                   <UserManagement />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/company-settings"
+              element={
+                <ProtectedRoute adminOnly>
+                  <CompanySettings />
                 </ProtectedRoute>
               }
             />

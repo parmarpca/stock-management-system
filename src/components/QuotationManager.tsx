@@ -41,6 +41,7 @@ import {
   QuotationAdditionalCostForm,
   Customer,
 } from "@/hooks/useQuotationData";
+import { useCompanySettings } from "@/hooks/useCompanySettings";
 import { cn } from "@/lib/utils";
 import { COMPANY_INFO } from "@/constants/company";
 
@@ -153,6 +154,20 @@ const QuotationManager = ({
   const [quotationToPrint, setQuotationToPrint] = useState<Quotation | null>(
     null
   );
+
+  const { companySettings } = useCompanySettings();
+
+  // Use company settings from database, fallback to constants
+  const companyInfo = companySettings
+    ? {
+        name: companySettings.company_name,
+        address: companySettings.company_address,
+        gstin: companySettings.company_gstin,
+        phone: companySettings.company_phone,
+        email: companySettings.company_email,
+        website: companySettings.company_website,
+      }
+    : COMPANY_INFO;
 
   const filteredStocks = stocks.filter(
     (stock) =>
@@ -599,13 +614,13 @@ const QuotationManager = ({
         <!-- Company Header -->
         <div style="text-align: center; margin-bottom: 20px; border-bottom: 1px solid #000; padding-bottom: 10px;">
           <h1 style="margin: 0; margin-bottom: 2px; font-size: 20px; font-weight: bold;">${
-            COMPANY_INFO.name
+            companyInfo.name
           }</h1>
           <p style="margin: 0; margin-bottom: 2px; font-size: 12px;">${
-            COMPANY_INFO.address
+            companyInfo.address
           }</p>
           <p style="margin: 0; margin-bottom: 8px; font-size: 11px;">GSTIN: ${
-            COMPANY_INFO.gstin
+            companyInfo.gstin
           }</p>
           <h2 style="margin: 0; font-size: 16px; font-weight: bold;">QUOTATION</h2>
         </div>

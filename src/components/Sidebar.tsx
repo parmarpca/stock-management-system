@@ -6,6 +6,7 @@ import {
   Database,
   UserCog,
   FileText,
+  Building2,
 } from "lucide-react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
@@ -34,6 +35,12 @@ const Sidebar = () => {
             label: "User Management",
             icon: UserCog,
             path: "/users",
+          },
+          {
+            id: "company-settings",
+            label: "Company Settings",
+            icon: Building2,
+            path: "/company-settings",
           },
           {
             id: "backup",
