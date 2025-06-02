@@ -9,6 +9,7 @@ import Dashboard from "./pages/Dashboard";
 import StockManagement from "./pages/StockManagement";
 import CustomerManagement from "./pages/CustomerManagement";
 import OrderManagement from "./pages/OrderManagement";
+import QuotationManagement from "./pages/QuotationManagement";
 import UserManagement from "./pages/UserManagement";
 import BackupManagement from "./pages/BackupManagement";
 import Login from "./pages/Login";
@@ -54,6 +55,14 @@ const App = () => (
               element={
                 <ProtectedRoute>
                   <OrderManagement />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/quotations"
+              element={
+                <ProtectedRoute>
+                  <QuotationManagement />
                 </ProtectedRoute>
               }
             />

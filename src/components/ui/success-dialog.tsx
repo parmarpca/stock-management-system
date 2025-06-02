@@ -28,19 +28,9 @@ export const SuccessDialog = ({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="w-[95vw] max-w-md">
         <DialogHeader>
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-2">
-              <CheckCircle className="h-6 w-6 text-green-600" />
-              <DialogTitle className="text-green-800">{title}</DialogTitle>
-            </div>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => onOpenChange(false)}
-              className="h-8 w-8 p-0"
-            >
-              <X className="h-4 w-4" />
-            </Button>
+          <div className="flex items-center space-x-2">
+            <CheckCircle className="h-6 w-6 text-green-600" />
+            <DialogTitle className="text-green-800">{title}</DialogTitle>
           </div>
         </DialogHeader>
 
@@ -65,7 +55,7 @@ export const SuccessDialog = ({
                 className="flex-1 flex items-center space-x-2"
               >
                 <Printer className="h-4 w-4" />
-                <span>Print Receipt</span>
+                <span>Print Quotation</span>
               </Button>
             )}
           </div>

@@ -5,6 +5,7 @@ import {
   BarChart3,
   Database,
   UserCog,
+  FileText,
 } from "lucide-react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
@@ -20,6 +21,12 @@ const Sidebar = () => {
     { id: "stock", label: "Stock Management", icon: Package, path: "/stock" },
     { id: "customers", label: "Customers", icon: Users, path: "/customers" },
     { id: "orders", label: "Orders", icon: ShoppingCart, path: "/orders" },
+    {
+      id: "quotations",
+      label: "Quotations",
+      icon: FileText,
+      path: "/quotations",
+    },
     ...(isAdmin
       ? [
           {

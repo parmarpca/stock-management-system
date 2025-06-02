@@ -31,6 +31,7 @@ interface Stock {
   code: string;
   length: "16ft" | "12ft";
   quantity: number;
+  weight?: number; // Weight in kg
   created_at: string;
   updated_at: string;
 }
@@ -55,6 +56,7 @@ interface StockOverviewProps {
     code: string;
     length: "16ft" | "12ft";
     quantity: number;
+    weight?: number;
   }) => Promise<any>;
   onStockDelete: (stockId: string) => Promise<any>;
   onRefresh: () => Promise<void>;
@@ -89,6 +91,7 @@ const StockOverview = ({
     code: "",
     length: "16ft" as "16ft" | "12ft",
     quantity: 0,
+    weight: undefined as number | undefined,
   });
 
   const filteredStocks = stocks.filter((stock) => {
@@ -126,11 +129,17 @@ const StockOverview = ({
         ...prev,
         name: matchingStock.name,
         length: matchingStock.length,
+        weight: matchingStock.weight,
       }));
     } else {
       setExistingStock(null);
       if (value.trim() === "") {
-        setNewStock((prev) => ({ ...prev, name: "", length: "16ft" }));
+        setNewStock((prev) => ({
+          ...prev,
+          name: "",
+          length: "16ft",
+          weight: undefined,
+        }));
       }
     }
   };
@@ -143,6 +152,7 @@ const StockOverview = ({
       code: stock.code,
       name: stock.name,
       length: stock.length,
+      weight: stock.weight,
     }));
     setExistingStock(stock);
     setShowCodeSuggestions(false);
@@ -189,7 +199,13 @@ const StockOverview = ({
 
   const resetForm = () => {
     setCodeInput("");
-    setNewStock({ name: "", code: "", length: "16ft", quantity: 0 });
+    setNewStock({
+      name: "",
+      code: "",
+      length: "16ft",
+      quantity: 0,
+      weight: undefined,
+    });
     setExistingStock(null);
     setShowCodeSuggestions(false);
     setSelectedCodeIndex(-1);
@@ -251,6 +267,7 @@ const StockOverview = ({
       code: stock.code,
       length: stock.length,
       quantity: stock.quantity,
+      weight: stock.weight,
     });
     setCodeInput(stock.code);
     setIsEditDialogOpen(true);
@@ -276,6 +293,7 @@ const StockOverview = ({
           code: newStock.code,
           length: newStock.length,
           quantity: newStock.quantity,
+          weight: newStock.weight,
         })
         .eq("id", editingStock.id)
         .select()
@@ -387,6 +405,7 @@ const StockOverview = ({
                 <th style="border: 1px solid #000; padding: 3px; text-align: left; font-weight: bold; font-size: 9px;">Code</th>
                 <th style="border: 1px solid #000; padding: 3px; text-align: left; font-weight: bold; font-size: 9px;">Item</th>
                 <th style="border: 1px solid #000; padding: 3px; text-align: center; font-weight: bold; font-size: 9px;">Len</th>
+                <th style="border: 1px solid #000; padding: 3px; text-align: center; font-weight: bold; font-size: 9px;">Weight</th>
                 <th style="border: 1px solid #000; padding: 3px; text-align: center; font-weight: bold; font-size: 9px;">Qty</th>
                 <th style="border: 1px solid #000; padding: 3px; text-align: center; font-weight: bold; font-size: 9px;">Status</th>
               </tr>
@@ -409,6 +428,9 @@ const StockOverview = ({
                   <td style="border: 1px solid #000; padding: 3px; text-align: center; font-size: 9px;">${
                     stock.length
                   }</td>
+                  <td style="border: 1px solid #000; padding: 3px; text-align: center; font-size: 9px;">${
+                    stock.weight ? `${stock.weight}kg` : "-"
+                  }</td>
                   <td style="border: 1px solid #000; padding: 3px; text-align: center; font-weight: bold; font-size: 9px; ${
                     stock.quantity < 50 ? "color: red;" : "color: green;"
                   }">${stock.quantity}</td>
@@ -423,7 +445,7 @@ const StockOverview = ({
             </tbody>
             <tfoot>
               <tr style="background-color: #f0f0f0;">
-                <td colspan="3" style="border: 1px solid #000; padding: 3px; font-weight: bold; text-align: right; font-size: 9px;">Total:</td>
+                <td colspan="4" style="border: 1px solid #000; padding: 3px; font-weight: bold; text-align: right; font-size: 9px;">Total:</td>
                 <td style="border: 1px solid #000; padding: 3px; text-align: center; font-weight: bold; font-size: 10px;">
                   ${totalQuantity}
                 </td>
@@ -563,6 +585,7 @@ const StockOverview = ({
                             <div className="text-sm text-gray-600">
                               {stock.name} - {stock.length} - {stock.quantity}{" "}
                               available
+                              {stock.weight && ` - ${stock.weight}kg`}
                             </div>
                           </div>
                         ))}
@@ -619,6 +642,37 @@ const StockOverview = ({
                   </select>
                 </div>
 
+                {/* Stock Weight */}
+                <div>
+                  <Label htmlFor="stock-weight">
+                    Stock Weight (kg) - Optional
+                  </Label>
+                  <Input
+                    id="stock-weight"
+                    type="number"
+                    step="0.01"
+                    value={newStock.weight || ""}
+                    onChange={(e) =>
+                      setNewStock((prev) => ({
+                        ...prev,
+                        weight: e.target.value
+                          ? parseFloat(e.target.value)
+                          : undefined,
+                      }))
+                    }
+                    placeholder="0.00"
+                    autoComplete="off"
+                    min="0"
+                    disabled={!!existingStock}
+                    className={existingStock ? "bg-gray-100" : ""}
+                  />
+                  {existingStock && existingStock.weight && (
+                    <p className="text-sm text-gray-600 mt-1">
+                      Current weight: {existingStock.weight}kg
+                    </p>
+                  )}
+                </div>
+
                 {/* Stock Quantity */}
                 <div>
                   <Label htmlFor="stock-quantity">
@@ -642,6 +696,7 @@ const StockOverview = ({
 
                 <div className="flex gap-2">
                   <Button
+                    type="button"
                     variant="outline"
                     onClick={() => setIsAddDialogOpen(false)}
                     disabled={isAddingStock}
@@ -743,6 +798,30 @@ const StockOverview = ({
                   </select>
                 </div>
 
+                {/* Stock Weight */}
+                <div>
+                  <Label htmlFor="edit-stock-weight">
+                    Stock Weight (kg) - Optional
+                  </Label>
+                  <Input
+                    id="edit-stock-weight"
+                    type="number"
+                    step="0.01"
+                    value={newStock.weight || ""}
+                    onChange={(e) =>
+                      setNewStock((prev) => ({
+                        ...prev,
+                        weight: e.target.value
+                          ? parseFloat(e.target.value)
+                          : undefined,
+                      }))
+                    }
+                    placeholder="0.00"
+                    autoComplete="off"
+                    min="0"
+                  />
+                </div>
+
                 {/* Stock Quantity */}
                 <div>
                   <Label htmlFor="edit-stock-quantity">Stock Quantity</Label>
@@ -764,6 +843,7 @@ const StockOverview = ({
 
                 <div className="flex gap-2">
                   <Button
+                    type="button"
                     variant="outline"
                     onClick={() => setIsEditDialogOpen(false)}
                     disabled={isAddingStock}
@@ -772,7 +852,7 @@ const StockOverview = ({
                     Cancel
                   </Button>
                   <Button
-                    onClick={handleUpdateStock}
+                    type="submit"
                     disabled={isAddingStock}
                     className="flex-1"
                   >
@@ -861,6 +941,16 @@ const StockOverview = ({
                     {stock.quantity}
                   </span>
                 </div>
+                {stock.weight && (
+                  <div className="flex justify-between items-center">
+                    <span className="text-xs lg:text-sm text-gray-600">
+                      Weight:
+                    </span>
+                    <span className="font-medium text-sm lg:text-base text-blue-600">
+                      {stock.weight}kg
+                    </span>
+                  </div>
+                )}
                 <div className="text-xs text-gray-500">
                   Updated: {new Date(stock.updated_at).toLocaleDateString()}
                 </div>

@@ -7,6 +7,7 @@ export interface Stock {
   code: string;
   length: "16ft" | "12ft";
   quantity: number;
+  weight?: number; // Weight in kg
   created_at: string;
   updated_at: string;
 }
@@ -14,6 +15,8 @@ export interface Stock {
 export interface Customer {
   id: string;
   name: string;
+  address?: string;
+  gstin_number?: string;
   created_at: string;
 }
 
@@ -144,6 +147,7 @@ export const useStockData = () => {
     code: string;
     length: "16ft" | "12ft";
     quantity: number;
+    weight?: number;
   }) => {
     try {
       // Check if stock with same code exists
@@ -158,13 +162,14 @@ export const useStockData = () => {
       }
 
       if (existingStock) {
-        // Update existing stock quantity
+        // Update existing stock quantity and other fields
         const { data, error } = await supabase
           .from("stocks")
           .update({
             quantity: existingStock.quantity + stockData.quantity,
             name: stockData.name,
             length: stockData.length,
+            weight: stockData.weight,
           })
           .eq("id", existingStock.id)
           .select()
