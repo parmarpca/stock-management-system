@@ -439,10 +439,17 @@ const QuotationManager = ({
   };
 
   const calculateTotals = () => {
-    const subtotal = quotationItems.reduce(
-      (sum, item) => sum + item.pieces * item.price_per_piece,
-      0
-    );
+    // Calculate subtotal based on weight and price per piece
+    const subtotal = quotationItems.reduce((sum, item) => {
+      const itemWeight = item.weight || 0;
+      const totalWeight = itemWeight * item.pieces;
+      return (
+        sum +
+        (itemWeight
+          ? totalWeight * item.price_per_piece
+          : item.pieces * item.price_per_piece)
+      );
+    }, 0);
 
     const additionalTotal = additionalCosts.reduce(
       (sum, cost) => sum + (cost.type === "add" ? cost.amount : -cost.amount),
@@ -451,13 +458,23 @@ const QuotationManager = ({
 
     const baseTotal = subtotal + additionalTotal;
     const gstAmount = gstEnabled ? (baseTotal * gstPercentage) / 100 : 0;
-    const finalTotal = baseTotal + gstAmount;
+    const rawFinalTotal = baseTotal + gstAmount;
+
+    // Round up/down logic
+    const roundedFinalTotal =
+      rawFinalTotal % 1 >= 0.5
+        ? Math.ceil(rawFinalTotal)
+        : Math.floor(rawFinalTotal);
+
+    const roundingAdjustment = roundedFinalTotal - rawFinalTotal;
 
     return {
       subtotal,
       additionalTotal,
       gstAmount,
-      finalTotal,
+      finalTotal: roundedFinalTotal,
+      roundingAdjustment,
+      rawFinalTotal,
     };
   };
 
@@ -658,28 +675,23 @@ const QuotationManager = ({
         <table style="width: 100%; border-collapse: collapse; margin-bottom: 10px; border: 1px solid #000;">
           <thead>
             <tr style="border: 1px solid #000;">
-              <th style="border: 1px solid #000; padding: 4px; text-align: center; font-size: 10px; width: 6%; font-weight: bold;">Sr.</th>
+              <th style="border: 1px solid #000; padding: 4px; text-align: center; font-size: 10px; width: 5%; font-weight: bold;">Sr.</th>
               <th style="border: 1px solid #000; padding: 4px; text-align: left; font-size: 10px; width: ${
-                showPrices ? "24%" : "30%"
+                showPrices ? "20%" : "25%"
               }; font-weight: bold;">Item Name</th>
               <th style="border: 1px solid #000; padding: 4px; text-align: left; font-size: 10px; width: ${
-                showPrices ? "12%" : "15%"
+                showPrices ? "10%" : "15%"
               }; font-weight: bold;">Code</th>
-              <th style="border: 1px solid #000; padding: 4px; text-align: center; font-size: 10px; width: ${
-                showPrices ? "8%" : "10%"
-              }; font-weight: bold;">Length</th>
-              <th style="border: 1px solid #000; padding: 4px; text-align: center; font-size: 10px; width: ${
-                showPrices ? "8%" : "10%"
-              }; font-weight: bold;">Wt.(kg)</th>
-              <th style="border: 1px solid #000; padding: 4px; text-align: center; font-size: 10px; width: ${
-                showPrices ? "6%" : "8%"
-              }; font-weight: bold;">Pcs</th>
-              <th style="border: 1px solid #000; padding: 4px; text-align: center; font-size: 10px; width: ${
-                showPrices ? "8%" : "12%"
-              }; font-weight: bold;">Net Wt.(kg)</th>
+              <th style="border: 1px solid #000; padding: 4px; text-align: center; font-size: 10px; width: 8%; font-weight: bold;">Length</th>
+              <th style="border: 1px solid #000; padding: 4px; text-align: center; font-size: 10px; width: 8%; font-weight: bold;">Wt.(kg)</th>
+              <th style="border: 1px solid #000; padding: 4px; text-align: center; font-size: 10px; width: 6%; font-weight: bold;">Pcs</th>
+              <th style="border: 1px solid #000; padding: 4px; text-align: center; font-size: 10px; width: 10%; font-weight: bold;">Net Wt.(kg)</th>
               ${
                 showPrices
-                  ? '<th style="border: 1px solid #000; padding: 4px; text-align: right; font-size: 10px; width: 12%; font-weight: bold;">Rate</th><th style="border: 1px solid #000; padding: 4px; text-align: right; font-size: 10px; width: 16%; font-weight: bold;">Amount</th>'
+                  ? `
+                <th style="border: 1px solid #000; padding: 4px; text-align: right; font-size: 10px; width: 12%; font-weight: bold;">Rate</th>
+                <th style="border: 1px solid #000; padding: 4px; text-align: right; font-size: 10px; width: 12%; font-weight: bold;">Amount</th>
+              `
                   : ""
               }
             </tr>
@@ -687,62 +699,70 @@ const QuotationManager = ({
           <tbody>
             ${quotation.quotation_items
               ?.map((item, index) => {
-                const netWeight = (item.weight || 0) * item.pieces;
+                const itemWeight = item.weight || 0;
+                const netWeight = itemWeight * item.pieces;
+                const itemTotal = itemWeight
+                  ? netWeight * item.price_per_piece
+                  : item.pieces * item.price_per_piece;
+
                 return `
-            <tr>
-              <td style="border: 1px solid #000; padding: 3px; text-align: center; font-size: 10px;">${
-                index + 1
-              }</td>
-              <td style="border: 1px solid #000; padding: 3px; font-size: 10px;">${
-                item.stock_name
-              }</td>
-              <td style="border: 1px solid #000; padding: 3px; font-size: 10px;">${
-                item.stock_code
-              }</td>
-              <td style="border: 1px solid #000; padding: 3px; text-align: center; font-size: 10px;">${
-                item.length
-              }</td>
-              <td style="border: 1px solid #000; padding: 3px; text-align: center; font-size: 10px;">${
-                item.weight ? item.weight.toFixed(2) : "-"
-              }</td>
-              <td style="border: 1px solid #000; padding: 3px; text-align: center; font-size: 10px;">${
-                item.pieces
-              }</td>
-              <td style="border: 1px solid #000; padding: 3px; text-align: center; font-size: 10px; font-weight: bold;">${
-                netWeight > 0 ? netWeight.toFixed(2) : "-"
-              }</td>
-              ${
-                showPrices
-                  ? `<td style="border: 1px solid #000; padding: 3px; text-align: right; font-size: 10px;">₹${item.price_per_piece.toFixed(
+                <tr>
+                  <td style="border: 1px solid #000; padding: 3px; text-align: center; font-size: 10px;">${
+                    index + 1
+                  }</td>
+                  <td style="border: 1px solid #000; padding: 3px; font-size: 10px;">${
+                    item.stock_name
+                  }</td>
+                  <td style="border: 1px solid #000; padding: 3px; font-size: 10px;">${
+                    item.stock_code
+                  }</td>
+                  <td style="border: 1px solid #000; padding: 3px; text-align: center; font-size: 10px;">${
+                    item.length
+                  }</td>
+                  <td style="border: 1px solid #000; padding: 3px; text-align: center; font-size: 10px;">${
+                    itemWeight ? itemWeight.toFixed(2) : "-"
+                  }</td>
+                  <td style="border: 1px solid #000; padding: 3px; text-align: center; font-size: 10px;">${
+                    item.pieces
+                  }</td>
+                  <td style="border: 1px solid #000; padding: 3px; text-align: center; font-size: 10px;">${
+                    netWeight > 0 ? netWeight.toFixed(2) : "-"
+                  }</td>
+                  ${
+                    showPrices
+                      ? `
+                    <td style="border: 1px solid #000; padding: 3px; text-align: right; font-size: 10px;">₹${item.price_per_piece.toFixed(
                       2
-                    )}</td><td style="border: 1px solid #000; padding: 3px; text-align: right; font-size: 10px;">₹${item.subtotal.toFixed(
+                    )}${itemWeight ? "/kg" : "/pc"}</td>
+                    <td style="border: 1px solid #000; padding: 3px; text-align: right; font-size: 10px;">₹${itemTotal.toFixed(
                       2
-                    )}</td>`
-                  : ""
-              }
-            </tr>
-          `;
+                    )}</td>
+                  `
+                      : ""
+                  }
+                </tr>
+              `;
               })
               .join("")}
           </tbody>
           ${
             totalWeight > 0
               ? `
-          <tfoot>
-            <tr style="border: 1px solid #000;">
-              <td colspan="${
-                showPrices ? "6" : "6"
-              }" style="border: 1px solid #000; padding: 3px; text-align: right; font-size: 10px; font-weight: bold;">Total Weight:</td>
-              <td style="border: 1px solid #000; padding: 3px; text-align: center; font-size: 10px; font-weight: bold;">${totalWeight.toFixed(
-                2
-              )} kg</td>
-              ${
-                showPrices
-                  ? '<td colspan="2" style="border: 1px solid #000; padding: 3px;"></td>'
-                  : ""
-              }
-            </tr>
-          </tfoot>
+            <tfoot>
+              <tr style="border: 1px solid #000;">
+                <td colspan="${
+                  showPrices ? "6" : "6"
+                }" style="border: 1px solid #000; padding: 3px; text-align: right; font-size: 10px; font-weight: bold;">Total Weight:</td>
+                <td style="border: 1px solid #000; padding: 3px; text-align: center; font-size: 10px; font-weight: bold;">${totalWeight.toFixed(
+                  2
+                )} kg</td>
+                ${
+                  showPrices
+                    ? '<td colspan="2" style="border: 1px solid #000; padding: 3px;"></td>'
+                    : ""
+                }
+              </tr>
+            </tfoot>
           `
               : ""
           }
@@ -760,26 +780,26 @@ const QuotationManager = ({
               ${
                 showPrices
                   ? `
-              <tr>
-                <td style="border: 1px solid #000; padding: 3px; text-align: right; font-size: 10px;">Subtotal:</td>
-                <td style="border: 1px solid #000; padding: 3px; text-align: right; font-size: 10px;">₹${quotation.subtotal.toFixed(
-                  2
-                )}</td>
-              </tr>
+                <tr>
+                  <td style="border: 1px solid #000; padding: 3px; text-align: right; font-size: 10px;">Subtotal:</td>
+                  <td style="border: 1px solid #000; padding: 3px; text-align: right; font-size: 10px;">₹${quotation.subtotal.toFixed(
+                    2
+                  )}</td>
+                </tr>
               `
                   : ""
               }
               ${quotation.quotation_additional_costs
                 ?.map(
                   (cost) => `
-              <tr>
-                <td style="border: 1px solid #000; padding: 3px; text-align: right; font-size: 10px;">${
-                  cost.label
-                }:</td>
-                <td style="border: 1px solid #000; padding: 3px; text-align: right; font-size: 10px;">${
-                  cost.type === "add" ? "+" : "-"
-                }₹${cost.amount.toFixed(2)}</td>
-              </tr>
+                <tr>
+                  <td style="border: 1px solid #000; padding: 3px; text-align: right; font-size: 10px;">${
+                    cost.label
+                  }:</td>
+                  <td style="border: 1px solid #000; padding: 3px; text-align: right; font-size: 10px;">${
+                    cost.type === "add" ? "+" : "-"
+                  }₹${cost.amount.toFixed(2)}</td>
+                </tr>
               `
                 )
                 .join("")}
@@ -789,34 +809,48 @@ const QuotationManager = ({
                 ${
                   quotation.gst_type === "CGST_SGST"
                     ? `
-                <tr>
-                  <td style="border: 1px solid #000; padding: 3px; text-align: right; font-size: 10px;">CGST (${(
-                    quotation.gst_percentage / 2
-                  ).toFixed(1)}%):</td>
-                  <td style="border: 1px solid #000; padding: 3px; text-align: right; font-size: 10px;">₹${(
-                    quotation.gst_amount / 2
-                  ).toFixed(2)}</td>
-                </tr>
-                <tr>
-                  <td style="border: 1px solid #000; padding: 3px; text-align: right; font-size: 10px;">SGST (${(
-                    quotation.gst_percentage / 2
-                  ).toFixed(1)}%):</td>
-                  <td style="border: 1px solid #000; padding: 3px; text-align: right; font-size: 10px;">₹${(
-                    quotation.gst_amount / 2
-                  ).toFixed(2)}</td>
-                </tr>
+                  <tr>
+                    <td style="border: 1px solid #000; padding: 3px; text-align: right; font-size: 10px;">CGST (${(
+                      quotation.gst_percentage / 2
+                    ).toFixed(1)}%):</td>
+                    <td style="border: 1px solid #000; padding: 3px; text-align: right; font-size: 10px;">₹${(
+                      quotation.gst_amount / 2
+                    ).toFixed(2)}</td>
+                  </tr>
+                  <tr>
+                    <td style="border: 1px solid #000; padding: 3px; text-align: right; font-size: 10px;">SGST (${(
+                      quotation.gst_percentage / 2
+                    ).toFixed(1)}%):</td>
+                    <td style="border: 1px solid #000; padding: 3px; text-align: right; font-size: 10px;">₹${(
+                      quotation.gst_amount / 2
+                    ).toFixed(2)}</td>
+                  </tr>
                 `
                     : `
-                <tr>
-                  <td style="border: 1px solid #000; padding: 3px; text-align: right; font-size: 10px;">${
-                    quotation.gst_type
-                  } (${quotation.gst_percentage}%):</td>
-                  <td style="border: 1px solid #000; padding: 3px; text-align: right; font-size: 10px;">₹${quotation.gst_amount.toFixed(
-                    2
-                  )}</td>
-                </tr>
+                  <tr>
+                    <td style="border: 1px solid #000; padding: 3px; text-align: right; font-size: 10px;">${
+                      quotation.gst_type
+                    } (${quotation.gst_percentage}%):</td>
+                    <td style="border: 1px solid #000; padding: 3px; text-align: right; font-size: 10px;">₹${quotation.gst_amount.toFixed(
+                      2
+                    )}</td>
+                  </tr>
                 `
                 }
+              `
+                  : ""
+              }
+              ${
+                quotation.rounding_adjustment !== 0
+                  ? `
+                <tr>
+                  <td style="border: 1px solid #000; padding: 3px; text-align: right; font-size: 10px;">Rounding ${
+                    quotation.rounding_adjustment > 0 ? "Up" : "Down"
+                  }:</td>
+                  <td style="border: 1px solid #000; padding: 3px; text-align: right; font-size: 10px;">₹${Math.abs(
+                    quotation.rounding_adjustment
+                  ).toFixed(2)}</td>
+                </tr>
               `
                   : ""
               }
@@ -825,6 +859,11 @@ const QuotationManager = ({
                 <td style="border: 1px solid #000; padding: 5px; text-align: right; font-size: 11px; font-weight: bold;">₹${quotation.total_amount.toFixed(
                   2
                 )}</td>
+              </tr>
+              <tr>
+                <td colspan="2" style="border: 1px solid #000; padding: 3px; text-align: right; font-size: 9px; color: #666;">
+                  (Pre-rounded: ₹${quotation.raw_total.toFixed(2)})
+                </td>
               </tr>
             </tbody>
           </table>
@@ -1265,38 +1304,62 @@ const QuotationManager = ({
                     </CardHeader>
                     <CardContent>
                       <div className="space-y-2">
-                        {quotationItems.map((item, index) => (
-                          <div
-                            key={index}
-                            className="flex items-center justify-between p-3 border rounded-lg"
-                          >
-                            <div className="flex-1">
-                              <div className="font-medium">
-                                {item.stock_name} ({item.stock_code})
-                              </div>
-                              <div className="text-sm text-gray-500">
-                                {item.length} - {item.pieces} pieces
-                                {item.weight && ` - ${item.weight}kg`} × ₹
-                                {item.price_per_piece} = ₹
-                                {(item.pieces * item.price_per_piece).toFixed(
-                                  2
-                                )}
-                                {!item.is_from_stock_table && (
-                                  <Badge variant="secondary" className="ml-2">
-                                    Manual
-                                  </Badge>
-                                )}
-                              </div>
-                            </div>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => removeItemFromQuotation(index)}
+                        {quotationItems.map((item, index) => {
+                          const itemWeight = item.weight || 0;
+                          const totalWeight = itemWeight * item.pieces;
+                          const itemTotal = itemWeight
+                            ? totalWeight * item.price_per_piece
+                            : item.pieces * item.price_per_piece;
+
+                          return (
+                            <div
+                              key={index}
+                              className="flex items-center justify-between p-3 border rounded-lg"
                             >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        ))}
+                              <div className="flex-1">
+                                <div className="font-medium">
+                                  {item.stock_name} ({item.stock_code})
+                                </div>
+                                <div className="text-sm text-gray-500">
+                                  {item.length} - {item.pieces} pieces
+                                  {itemWeight > 0 && (
+                                    <>
+                                      <span className="mx-1">-</span>
+                                      <span className="font-medium">
+                                        {itemWeight}kg × {item.pieces} ={" "}
+                                        {totalWeight.toFixed(2)}kg
+                                      </span>
+                                      <span className="mx-1">×</span>
+                                      <span>₹{item.price_per_piece}/kg</span>
+                                    </>
+                                  )}
+                                  {!itemWeight && (
+                                    <>
+                                      <span className="mx-1">×</span>
+                                      <span>₹{item.price_per_piece}/piece</span>
+                                    </>
+                                  )}
+                                  <span className="mx-1">=</span>
+                                  <span className="font-medium">
+                                    ₹{itemTotal.toFixed(2)}
+                                  </span>
+                                  {!item.is_from_stock_table && (
+                                    <Badge variant="secondary" className="ml-2">
+                                      Manual
+                                    </Badge>
+                                  )}
+                                </div>
+                              </div>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => removeItemFromQuotation(index)}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          );
+                        })}
                       </div>
                     </CardContent>
                   </Card>
@@ -1506,10 +1569,24 @@ const QuotationManager = ({
                             <span>₹{totals.gstAmount.toFixed(2)}</span>
                           </div>
                         )}
+                        {totals.roundingAdjustment !== 0 && (
+                          <div className="flex justify-between text-sm text-gray-600">
+                            <span>
+                              Rounding{" "}
+                              {totals.roundingAdjustment > 0 ? "Up" : "Down"}:
+                            </span>
+                            <span>
+                              ₹{Math.abs(totals.roundingAdjustment).toFixed(2)}
+                            </span>
+                          </div>
+                        )}
                         <Separator />
                         <div className="flex justify-between font-bold text-lg">
                           <span>Total:</span>
                           <span>₹{totals.finalTotal.toFixed(2)}</span>
+                        </div>
+                        <div className="text-xs text-gray-500 text-right">
+                          (Pre-rounded: ₹{totals.rawFinalTotal.toFixed(2)})
                         </div>
                       </div>
                     </CardContent>
@@ -1601,9 +1678,20 @@ const QuotationManager = ({
                         </div>
                         <div className="text-center">
                           {showFinalPriceInList && (
-                            <p className="text-lg font-bold text-green-600">
-                              ₹{quotation.total_amount.toFixed(2)}
-                            </p>
+                            <>
+                              <p className="text-lg font-bold text-green-600">
+                                ₹{quotation.total_amount.toFixed(2)}
+                              </p>
+                              {quotation.rounding_adjustment !== 0 && (
+                                <p className="text-xs text-gray-500">
+                                  (Rounded{" "}
+                                  {quotation.rounding_adjustment > 0
+                                    ? "up"
+                                    : "down"}{" "}
+                                  from ₹{quotation.raw_total.toFixed(2)})
+                                </p>
+                              )}
+                            </>
                           )}
                           <p className="text-xs text-gray-500">
                             {quotation.quotation_items?.length || 0} items
@@ -1625,8 +1713,12 @@ const QuotationManager = ({
                             </h4>
                             <div className="space-y-1">
                               {quotation.quotation_items.map((item, index) => {
-                                const netWeight =
-                                  (item.weight || 0) * item.pieces;
+                                const itemWeight = item.weight || 0;
+                                const totalWeight = itemWeight * item.pieces;
+                                const itemTotal = itemWeight
+                                  ? totalWeight * item.price_per_piece
+                                  : item.pieces * item.price_per_piece;
+
                                 return (
                                   <div
                                     key={index}
@@ -1634,15 +1726,31 @@ const QuotationManager = ({
                                   >
                                     <span>
                                       {item.stock_name} ({item.stock_code})
-                                      {item.weight &&
-                                        ` - ${item.weight}kg × ${
-                                          item.pieces
-                                        } = ${netWeight.toFixed(2)}kg`}
+                                      {itemWeight > 0 && (
+                                        <>
+                                          {" "}
+                                          - {itemWeight}kg × {item.pieces} ={" "}
+                                          {totalWeight.toFixed(2)}kg
+                                        </>
+                                      )}
+                                      {!itemWeight && (
+                                        <> - {item.pieces} pieces</>
+                                      )}
                                     </span>
                                     {showPricesInList && (
                                       <span className="font-medium">
-                                        ₹{item.price_per_piece} × {item.pieces}{" "}
-                                        = ₹{item.subtotal.toFixed(2)}
+                                        {itemWeight > 0 ? (
+                                          <>
+                                            ₹{item.price_per_piece}/kg ×{" "}
+                                            {totalWeight.toFixed(2)}kg
+                                          </>
+                                        ) : (
+                                          <>
+                                            ₹{item.price_per_piece}/pc ×{" "}
+                                            {item.pieces}
+                                          </>
+                                        )}
+                                        {" = "}₹{itemTotal.toFixed(2)}
                                       </span>
                                     )}
                                   </div>
@@ -1669,38 +1777,74 @@ const QuotationManager = ({
                               </div>
                             )}
 
-                            {/* Additional Costs */}
-                            {quotation.quotation_additional_costs &&
-                              quotation.quotation_additional_costs.length >
-                                0 && (
-                                <div className="mt-2 pt-2 border-t border-gray-200">
-                                  <h5 className="text-xs font-medium text-gray-600 mb-1">
-                                    Additional:
-                                  </h5>
-                                  {quotation.quotation_additional_costs.map(
-                                    (cost, index) => (
-                                      <div
-                                        key={index}
-                                        className="text-sm text-gray-600 flex justify-between"
-                                      >
-                                        <span>{cost.label}</span>
-                                        {showPricesInList && (
-                                          <span
-                                            className={
-                                              cost.type === "add"
-                                                ? "text-green-600"
-                                                : "text-red-600"
-                                            }
-                                          >
-                                            {cost.type === "add" ? "+" : "-"}₹
-                                            {cost.amount.toFixed(2)}
-                                          </span>
-                                        )}
-                                      </div>
-                                    )
-                                  )}
+                            {/* Additional Costs and Totals */}
+                            {showPricesInList && (
+                              <div className="mt-2 pt-2 border-t border-gray-200 space-y-1">
+                                <div className="text-sm text-gray-600 flex justify-between">
+                                  <span>Subtotal:</span>
+                                  <span className="font-medium">
+                                    ₹{quotation.subtotal.toFixed(2)}
+                                  </span>
                                 </div>
-                              )}
+                                {quotation.quotation_additional_costs?.map(
+                                  (cost, index) => (
+                                    <div
+                                      key={index}
+                                      className="text-sm text-gray-600 flex justify-between"
+                                    >
+                                      <span>{cost.label}:</span>
+                                      <span
+                                        className={
+                                          cost.type === "add"
+                                            ? "text-green-600"
+                                            : "text-red-600"
+                                        }
+                                      >
+                                        {cost.type === "add" ? "+" : "-"}₹
+                                        {cost.amount.toFixed(2)}
+                                      </span>
+                                    </div>
+                                  )
+                                )}
+                                {quotation.gst_enabled && (
+                                  <div className="text-sm text-gray-600 flex justify-between">
+                                    <span>
+                                      GST ({quotation.gst_percentage}%):
+                                    </span>
+                                    <span>
+                                      ₹{quotation.gst_amount.toFixed(2)}
+                                    </span>
+                                  </div>
+                                )}
+                                {quotation.rounding_adjustment !== 0 && (
+                                  <div className="text-sm text-gray-600 flex justify-between">
+                                    <span>
+                                      Rounding{" "}
+                                      {quotation.rounding_adjustment > 0
+                                        ? "Up"
+                                        : "Down"}
+                                      :
+                                    </span>
+                                    <span>
+                                      ₹
+                                      {Math.abs(
+                                        quotation.rounding_adjustment
+                                      ).toFixed(2)}
+                                    </span>
+                                  </div>
+                                )}
+                                <div className="text-sm font-bold flex justify-between border-t border-gray-300 pt-1">
+                                  <span>Total:</span>
+                                  <span>
+                                    ₹{quotation.total_amount.toFixed(2)}
+                                  </span>
+                                </div>
+                                <div className="text-xs text-gray-500 text-right">
+                                  (Pre-rounded: ₹
+                                  {quotation.raw_total.toFixed(2)})
+                                </div>
+                              </div>
+                            )}
                           </div>
                         )}
                     </div>
@@ -2001,36 +2145,62 @@ const QuotationManager = ({
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-2">
-                    {quotationItems.map((item, index) => (
-                      <div
-                        key={index}
-                        className="flex items-center justify-between p-3 border rounded-lg"
-                      >
-                        <div className="flex-1">
-                          <div className="font-medium">
-                            {item.stock_name} ({item.stock_code})
-                          </div>
-                          <div className="text-sm text-gray-500">
-                            {item.length} - {item.pieces} pieces
-                            {item.weight && ` - ${item.weight}kg`} × ₹
-                            {item.price_per_piece} = ₹
-                            {(item.pieces * item.price_per_piece).toFixed(2)}
-                            {!item.is_from_stock_table && (
-                              <Badge variant="secondary" className="ml-2">
-                                Manual
-                              </Badge>
-                            )}
-                          </div>
-                        </div>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => removeItemFromQuotation(index)}
+                    {quotationItems.map((item, index) => {
+                      const itemWeight = item.weight || 0;
+                      const totalWeight = itemWeight * item.pieces;
+                      const itemTotal = itemWeight
+                        ? totalWeight * item.price_per_piece
+                        : item.pieces * item.price_per_piece;
+
+                      return (
+                        <div
+                          key={index}
+                          className="flex items-center justify-between p-3 border rounded-lg"
                         >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    ))}
+                          <div className="flex-1">
+                            <div className="font-medium">
+                              {item.stock_name} ({item.stock_code})
+                            </div>
+                            <div className="text-sm text-gray-500">
+                              {item.length} - {item.pieces} pieces
+                              {itemWeight > 0 && (
+                                <>
+                                  <span className="mx-1">-</span>
+                                  <span className="font-medium">
+                                    {itemWeight}kg × {item.pieces} ={" "}
+                                    {totalWeight.toFixed(2)}kg
+                                  </span>
+                                  <span className="mx-1">×</span>
+                                  <span>₹{item.price_per_piece}/kg</span>
+                                </>
+                              )}
+                              {!itemWeight && (
+                                <>
+                                  <span className="mx-1">×</span>
+                                  <span>₹{item.price_per_piece}/piece</span>
+                                </>
+                              )}
+                              <span className="mx-1">=</span>
+                              <span className="font-medium">
+                                ₹{itemTotal.toFixed(2)}
+                              </span>
+                              {!item.is_from_stock_table && (
+                                <Badge variant="secondary" className="ml-2">
+                                  Manual
+                                </Badge>
+                              )}
+                            </div>
+                          </div>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => removeItemFromQuotation(index)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      );
+                    })}
                   </div>
                 </CardContent>
               </Card>
@@ -2236,10 +2406,24 @@ const QuotationManager = ({
                         <span>₹{totals.gstAmount.toFixed(2)}</span>
                       </div>
                     )}
+                    {totals.roundingAdjustment !== 0 && (
+                      <div className="flex justify-between text-sm text-gray-600">
+                        <span>
+                          Rounding{" "}
+                          {totals.roundingAdjustment > 0 ? "Up" : "Down"}:
+                        </span>
+                        <span>
+                          ₹{Math.abs(totals.roundingAdjustment).toFixed(2)}
+                        </span>
+                      </div>
+                    )}
                     <Separator />
                     <div className="flex justify-between font-bold text-lg">
                       <span>Total:</span>
                       <span>₹{totals.finalTotal.toFixed(2)}</span>
+                    </div>
+                    <div className="text-xs text-gray-500 text-right">
+                      (Pre-rounded: ₹{totals.rawFinalTotal.toFixed(2)})
                     </div>
                   </div>
                 </CardContent>

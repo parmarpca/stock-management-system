@@ -37,6 +37,8 @@ export interface Quotation {
   gst_percentage: number;
   gst_amount: number;
   total_amount: number;
+  raw_total: number;
+  rounding_adjustment: number;
   show_unit_price: boolean;
   created_at: string;
   updated_at: string;
