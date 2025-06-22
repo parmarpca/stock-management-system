@@ -402,12 +402,12 @@ const StockOverview = ({
           <table style="width: 100%; border-collapse: collapse; border: 1px solid #000;">
             <thead>
               <tr style="background-color: #f0f0f0;">
-                <th style="border: 1px solid #000; padding: 3px; text-align: left; font-weight: bold; font-size: 9px;">Code</th>
-                <th style="border: 1px solid #000; padding: 3px; text-align: left; font-weight: bold; font-size: 9px;">Item</th>
-                <th style="border: 1px solid #000; padding: 3px; text-align: center; font-weight: bold; font-size: 9px;">Len</th>
-                <th style="border: 1px solid #000; padding: 3px; text-align: center; font-weight: bold; font-size: 9px;">Weight</th>
-                <th style="border: 1px solid #000; padding: 3px; text-align: center; font-weight: bold; font-size: 9px;">Qty</th>
-                <th style="border: 1px solid #000; padding: 3px; text-align: center; font-weight: bold; font-size: 9px;">Status</th>
+                <th style="border: 1px solid #000; padding: 3px; text-align: left; font-weight: bold; font-size: 14px;">Code</th>
+                <th style="border: 1px solid #000; padding: 3px; text-align: left; font-weight: bold; font-size: 14px;">Item</th>
+                <th style="border: 1px solid #000; padding: 3px; text-align: center; font-weight: bold; font-size: 14px;">Len</th>
+                <th style="border: 1px solid #000; padding: 3px; text-align: center; font-weight: bold; font-size: 14px;">Weight</th>
+                <th style="border: 1px solid #000; padding: 3px; text-align: center; font-weight: bold; font-size: 14px;">Qty</th>
+                <th style="border: 1px solid #000; padding: 3px; text-align: center; font-weight: bold; font-size: 14px;">Status</th>
               </tr>
             </thead>
             <tbody>
@@ -419,22 +419,22 @@ const StockOverview = ({
                     ? 'style="background-color: #ffebee;"'
                     : ""
                 }>
-                  <td style="border: 1px solid #000; padding: 3px; font-weight: bold; font-size: 9px;">${
+                  <td style="border: 1px solid #000; padding: 3px; font-weight: bold; font-size: 14px;">${
                     stock.code
                   }</td>
-                  <td style="border: 1px solid #000; padding: 3px; font-size: 9px;">${
+                  <td style="border: 1px solid #000; padding: 3px; font-size: 14px;">${
                     stock.name
                   }</td>
-                  <td style="border: 1px solid #000; padding: 3px; text-align: center; font-size: 9px;">${
+                  <td style="border: 1px solid #000; padding: 3px; text-align: center; font-size: 14px;">${
                     stock.length
                   }</td>
-                  <td style="border: 1px solid #000; padding: 3px; text-align: center; font-size: 9px;">${
+                  <td style="border: 1px solid #000; padding: 3px; text-align: center; font-size: 14px;">${
                     stock.weight ? `${stock.weight}kg` : "-"
                   }</td>
-                  <td style="border: 1px solid #000; padding: 3px; text-align: center; font-weight: bold; font-size: 9px; ${
+                  <td style="border: 1px solid #000; padding: 3px; text-align: center; font-weight: bold; font-size: 14px; ${
                     stock.quantity < 50 ? "color: red;" : "color: green;"
                   }">${stock.quantity}</td>
-                  <td style="border: 1px solid #000; padding: 3px; text-align: center; font-weight: bold; font-size: 8px; ${
+                  <td style="border: 1px solid #000; padding: 3px; text-align: center; font-weight: bold; font-size: 14px; ${
                     stock.quantity < 50 ? "color: red;" : "color: green;"
                   }">
                     ${stock.quantity < 50 ? "LOW" : "OK"}
@@ -445,11 +445,11 @@ const StockOverview = ({
             </tbody>
             <tfoot>
               <tr style="background-color: #f0f0f0;">
-                <td colspan="4" style="border: 1px solid #000; padding: 3px; font-weight: bold; text-align: right; font-size: 9px;">Total:</td>
-                <td style="border: 1px solid #000; padding: 3px; text-align: center; font-weight: bold; font-size: 10px;">
+                <td colspan="4" style="border: 1px solid #000; padding: 3px; font-weight: bold; text-align: right; font-size: 14px;">Total:</td>
+                <td style="border: 1px solid #000; padding: 3px; text-align: center; font-weight: bold; font-size: 14px;">
                   ${totalQuantity}
                 </td>
-                <td style="border: 1px solid #000; padding: 3px; text-align: center; font-weight: bold; font-size: 8px; color: ${
+                <td style="border: 1px solid #000; padding: 3px; text-align: center; font-weight: bold; font-size: 14px; color: ${
                   lowStockCount > 0 ? "red" : "green"
                 };">
                   ${lowStockCount > 0 ? `${lowStockCount} LOW` : "ALL OK"}
@@ -459,7 +459,7 @@ const StockOverview = ({
           </table>
         </div>
 
-        <div style="margin-top: 10px; text-align: center; font-size: 8px; color: #666;">
+        <div style="margin-top: 10px; text-align: center; font-size: 14px; color: #666;">
           Generated: ${new Date().toLocaleDateString()} ${new Date().toLocaleTimeString()}
         </div>
       </div>

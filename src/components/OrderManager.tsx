@@ -633,7 +633,7 @@ const OrderManager = ({
 
   const handlePrintOrder = (order: Order) => {
     const printContent = `
-      <div style="padding: 10px; font-family: Arial, sans-serif; font-size: 12px; line-height: 1.2;">
+      <div style="padding: 10px; font-family: Arial, sans-serif; font-size: 16px; line-height: 1.2;">
         <div style="text-align: center; margin-bottom: 10px;">
           <h1 style="margin: 0; font-size: 18px; font-weight: bold;">ORDER RECEIPT</h1>
         </div>
@@ -664,10 +664,10 @@ const OrderManager = ({
           <table style="width: 100%; border-collapse: collapse; border: 1px solid #000;">
             <thead>
               <tr style="background-color: #f0f0f0;">
-                <th style="border: 1px solid #000; padding: 2px 4px; text-align: left; font-weight: bold; font-size: 12px; width: 15%;">Code</th>
-                <th style="border: 1px solid #000; padding: 2px 4px; text-align: left; font-weight: bold; font-size: 12px; width: 45%;">Item Name</th>
-                <th style="border: 1px solid #000; padding: 2px 4px; text-align: center; font-weight: bold; font-size: 12px; width: 20%;">Length</th>
-                <th style="border: 1px solid #000; padding: 2px 4px; text-align: center; font-weight: bold; font-size: 12px; width: 20%;">Qty</th>
+                <th style="border: 1px solid #000; padding: 2px 4px; text-align: left; font-weight: bold; font-size: 16px; width: 15%;">Code</th>
+                <th style="border: 1px solid #000; padding: 2px 4px; text-align: left; font-weight: bold; font-size: 16px; width: 45%;">Item Name</th>
+                <th style="border: 1px solid #000; padding: 2px 4px; text-align: center; font-weight: bold; font-size: 16px; width: 20%;">Length</th>
+                <th style="border: 1px solid #000; padding: 2px 4px; text-align: center; font-weight: bold; font-size: 16px; width: 20%;">Qty</th>
               </tr>
             </thead>
             <tbody>
@@ -676,28 +676,28 @@ const OrderManager = ({
                   ?.map(
                     (item) =>
                       `<tr>
-                        <td style="border: 1px solid #000; padding: 2px 4px; font-weight: bold; font-size: 12px; white-space: nowrap;">${
+                        <td style="border: 1px solid #000; padding: 2px 4px; font-weight: bold; font-size: 16px; white-space: nowrap;">${
                           item.stock_code || "N/A"
                         }</td>
-                        <td style="border: 1px solid #000; padding: 2px 4px; font-size: 12px; max-width: 0; overflow: hidden; text-overflow: ellipsis;">${
+                        <td style="border: 1px solid #000; padding: 2px 4px; font-size: 16px; max-width: 0; overflow: hidden; text-overflow: ellipsis;">${
                           item.stock_name
                         }</td>
-                        <td style="border: 1px solid #000; padding: 2px 4px; text-align: center; font-size: 12px; white-space: nowrap;">${
+                        <td style="border: 1px solid #000; padding: 2px 4px; text-align: center; font-size: 16px; white-space: nowrap;">${
                           item.stock_length || "N/A"
                         }</td>
-                        <td style="border: 1px solid #000; padding: 2px 4px; text-align: center; font-weight: bold; font-size: 12px; white-space: nowrap;">${
+                        <td style="border: 1px solid #000; padding: 2px 4px; text-align: center; font-weight: bold; font-size: 16px; white-space: nowrap;">${
                           item.pieces_used
                         }</td>
                       </tr>`
                   )
                   .join("") ||
-                "<tr><td colspan='4' style='border: 1px solid #000; padding: 2px 4px; text-align: center; font-size: 12px;'>No items</td></tr>"
+                "<tr><td colspan='4' style='border: 1px solid #000; padding: 2px 4px; text-align: center; font-size: 16px;'>No items</td></tr>"
               }
             </tbody>
             <tfoot>
               <tr style="background-color: #f0f0f0;">
-                <td colspan="3" style="border: 1px solid #000; padding: 2px 4px; font-weight: bold; text-align: right; font-size: 12px;">Total:</td>
-                <td style="border: 1px solid #000; padding: 2px 4px; text-align: center; font-weight: bold; font-size: 12px;">
+                <td colspan="3" style="border: 1px solid #000; padding: 2px 4px; font-weight: bold; text-align: right; font-size: 16px;">Total:</td>
+                <td style="border: 1px solid #000; padding: 2px 4px; text-align: center; font-weight: bold; font-size: 16px;">
                   ${
                     order.order_items?.reduce(
                       (total, item) => total + item.pieces_used,
@@ -763,7 +763,7 @@ const OrderManager = ({
       <div style="padding: 8px; font-family: Arial, sans-serif; font-size: 10px; line-height: 1.2;">
         <div style="text-align: center; margin-bottom: 8px;">
           <h1 style="margin: 0; font-size: 16px; font-weight: bold;">MULTIPLE ORDERS REPORT</h1>
-          <p style="margin: 2px 0; font-size: 12px;">Total Orders: ${totalOrders} | Total Items: ${totalItems}</p>
+          <p style="margin: 2px 0; font-size: 16px;">Total Orders: ${totalOrders} | Total Items: ${totalItems}</p>
         </div>
         
         <div style="margin-bottom: 6px; padding: 4px; border: 1px solid #ddd; background-color: #f9f9f9;">
@@ -781,7 +781,7 @@ const OrderManager = ({
           .map(
             (order, index) => `
           <div style="margin-bottom: 8px; page-break-inside: avoid;">
-            <div style="background-color: #f0f0f0; padding: 3px; border: 1px solid #000; font-weight: bold; font-size: 12px;">
+            <div style="background-color: #f0f0f0; padding: 3px; border: 1px solid #000; font-weight: bold; font-size: 16px;">
               Order #${index + 1} - ${order.customer_name} - ${
               order.order_date
             }${order.color_code ? ` - Color: ${order.color_code}` : ""}
@@ -789,10 +789,10 @@ const OrderManager = ({
             <table style="width: 100%; border-collapse: collapse; border: 1px solid #000; margin-bottom: 4px;">
               <thead>
                 <tr style="background-color: #f8f8f8;">
-                  <th style="border: 1px solid #000; padding: 2px; text-align: left; font-weight: bold; font-size: 12px; width: 15%;">Code</th>
-                  <th style="border: 1px solid #000; padding: 2px; text-align: left; font-weight: bold; font-size: 12px; width: 45%;">Item</th>
-                  <th style="border: 1px solid #000; padding: 2px; text-align: center; font-weight: bold; font-size: 12px; width: 20%;">Len</th>
-                  <th style="border: 1px solid #000; padding: 2px; text-align: center; font-weight: bold; font-size: 12px; width: 20%;">Qty</th>
+                  <th style="border: 1px solid #000; padding: 2px; text-align: left; font-weight: bold; font-size: 16px; width: 15%;">Code</th>
+                  <th style="border: 1px solid #000; padding: 2px; text-align: left; font-weight: bold; font-size: 16px; width: 45%;">Item</th>
+                  <th style="border: 1px solid #000; padding: 2px; text-align: center; font-weight: bold; font-size: 16px; width: 20%;">Len</th>
+                  <th style="border: 1px solid #000; padding: 2px; text-align: center; font-weight: bold; font-size: 16px; width: 20%;">Qty</th>
                 </tr>
               </thead>
               <tbody>
@@ -801,28 +801,28 @@ const OrderManager = ({
                     ?.map(
                       (item) => `
                   <tr>
-                    <td style="border: 1px solid #000; padding: 2px; font-weight: bold; font-size: 12px; white-space: nowrap;">${
+                    <td style="border: 1px solid #000; padding: 2px; font-weight: bold; font-size: 16px; white-space: nowrap;">${
                       item.stock_code || "N/A"
                     }</td>
-                    <td style="border: 1px solid #000; padding: 2px; font-size: 12px; max-width: 0; overflow: hidden; text-overflow: ellipsis;">${
+                    <td style="border: 1px solid #000; padding: 2px; font-size: 16px; max-width: 0; overflow: hidden; text-overflow: ellipsis;">${
                       item.stock_name
                     }</td>
-                    <td style="border: 1px solid #000; padding: 2px; text-align: center; font-size: 12px; white-space: nowrap;">${
+                    <td style="border: 1px solid #000; padding: 2px; text-align: center; font-size: 16px; white-space: nowrap;">${
                       item.stock_length || "N/A"
                     }</td>
-                    <td style="border: 1px solid #000; padding: 2px; text-align: center; font-weight: bold; font-size: 12px; white-space: nowrap;">${
+                    <td style="border: 1px solid #000; padding: 2px; text-align: center; font-weight: bold; font-size: 16px; white-space: nowrap;">${
                       item.pieces_used
                     }</td>
                   </tr>
                 `
                     )
                     .join("") ||
-                  '<tr><td colspan="4" style="border: 1px solid #000; padding: 2px; text-align: center; font-size: 12px;">No items</td></tr>'
+                  '<tr><td colspan="4" style="border: 1px solid #000; padding: 2px; text-align: center; font-size: 16px;">No items</td></tr>'
                 }
               </tbody>
               <tfoot>
                 <tr style="background-color: #f0f0f0;">
-                  <td colspan="3" style="border: 1px solid #000; padding: 2px; font-weight: bold; text-align: right; font-size: 12px;">Order Total:</td>
+                  <td colspan="3" style="border: 1px solid #000; padding: 2px; font-weight: bold; text-align: right; font-size: 16px;">Order Total:</td>
                   <td style="border: 1px solid #000; padding: 2px; text-align: center; font-weight: bold; font-size: 10px;">
                     ${
                       order.order_items?.reduce(
@@ -842,9 +842,9 @@ const OrderManager = ({
         <div style="margin-top: 8px; padding: 4px; border: 2px solid #000; background-color: #f0f0f0;">
           <table style="width: 100%; border-collapse: collapse;">
             <tr>
-              <td style="padding: 2px; font-weight: bold; font-size: 12px;">GRAND TOTAL:</td>
-              <td style="padding: 2px; text-align: right; font-weight: bold; font-size: 12px;">${totalOrders} Orders</td>
-              <td style="padding: 2px; text-align: right; font-weight: bold; font-size: 12px;">${totalItems} Items</td>
+              <td style="padding: 2px; font-weight: bold; font-size: 16px;">GRAND TOTAL:</td>
+              <td style="padding: 2px; text-align: right; font-weight: bold; font-size: 16px;">${totalOrders} Orders</td>
+              <td style="padding: 2px; text-align: right; font-weight: bold; font-size: 16px;">${totalItems} Items</td>
             </tr>
           </table>
         </div>
