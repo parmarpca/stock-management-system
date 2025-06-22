@@ -21,6 +21,13 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { supabase } from "@/integrations/supabase/client";
@@ -79,6 +86,8 @@ const StockOverview = ({
   const [loadingHistory, setLoadingHistory] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [editingStock, setEditingStock] = useState<Stock | null>(null);
+  const [selectedPrefix, setSelectedPrefix] = useState<string>("all");
+  const [isPrintDialogOpen, setIsPrintDialogOpen] = useState(false);
 
   // Form states
   const [codeInput, setCodeInput] = useState("");
@@ -94,12 +103,23 @@ const StockOverview = ({
     weight: undefined as number | undefined,
   });
 
+  // Get unique prefixes from stock codes
+  const getUniquePrefixes = () => {
+    const prefixes = stocks
+      .map((stock) => stock.code.substring(0, 2))
+      .filter((prefix) => /^\d+$/.test(prefix)); // Only include numeric prefixes
+    return Array.from(new Set(prefixes)).sort();
+  };
+
+  // Filter stocks based on all criteria
   const filteredStocks = stocks.filter((stock) => {
     const matchesSearch =
       stock.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       stock.code.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesLowStock = !showLowStockOnly || stock.quantity < 50;
-    return matchesSearch && matchesLowStock;
+    const matchesPrefix =
+      selectedPrefix === "all" || stock.code.startsWith(selectedPrefix);
+    return matchesSearch && matchesLowStock && matchesPrefix;
   });
 
   // Filter stocks based on code input for suggestions
@@ -355,8 +375,9 @@ const StockOverview = ({
     }
   };
 
-  const handlePrintAllStocks = () => {
-    const sortedStocks = [...stocks].sort((a, b) =>
+  // Function to handle print action
+  const handlePrint = (stocksToPrint: Stock[]) => {
+    const sortedStocks = [...stocksToPrint].sort((a, b) =>
       a.code.localeCompare(b.code)
     );
 
@@ -372,6 +393,15 @@ const StockOverview = ({
       <div style="padding: 8px; font-family: Arial, sans-serif; font-size: 10px; line-height: 1.2;">
         <div style="text-align: center; margin-bottom: 8px;">
           <h1 style="margin: 0; font-size: 16px; font-weight: bold;">STOCK INVENTORY</h1>
+          ${
+            searchTerm || selectedPrefix || showLowStockOnly
+              ? `<div style="color: #666; font-size: 12px; margin-top: 4px;">
+              ${searchTerm ? `Search: "${searchTerm}"` : ""}
+              ${selectedPrefix ? `Prefix: ${selectedPrefix}` : ""}
+              ${showLowStockOnly ? "Low Stock Only" : ""}
+            </div>`
+              : ""
+          }
         </div>
         
         <div style="margin-bottom: 8px; padding: 6px; border: 1px solid #ddd; background-color: #f9f9f9;">
@@ -489,20 +519,51 @@ const StockOverview = ({
     }
   };
 
+  // Function to check if any filters are active
+  const hasActiveFilters = () => {
+    return searchTerm !== "" || showLowStockOnly || selectedPrefix !== "all";
+  };
+
+  // Modified print handler
+  const handlePrintClick = () => {
+    if (hasActiveFilters()) {
+      setIsPrintDialogOpen(true);
+    } else {
+      handlePrint(stocks);
+    }
+  };
+
   return (
     <div className="space-y-4 lg:space-y-6">
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
         {/* <h2 className="text-xl lg:text-2xl font-bold">Stock Overview</h2> */}
         {/* Search */}
-        <div className="relative max-w-md">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-          <Input
-            placeholder="Search stocks..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-10 w-full"
-            autoComplete="off"
-          />
+        <div className="flex flex-col lg:flex-row gap-4 lg:items-center flex-1">
+          <div className="relative max-w-md">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+            <Input
+              placeholder="Search stocks..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-10 w-full"
+              autoComplete="off"
+            />
+          </div>
+
+          {/* Code Prefix Filter */}
+          <Select value={selectedPrefix} onValueChange={setSelectedPrefix}>
+            <SelectTrigger className="w-[180px]">
+              <SelectValue placeholder="Filter by prefix" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Prefixes</SelectItem>
+              {getUniquePrefixes().map((prefix) => (
+                <SelectItem key={prefix} value={prefix}>
+                  {prefix}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
         <div className="flex items-center gap-4">
           {/* Filter Toggle */}
@@ -521,12 +582,44 @@ const StockOverview = ({
 
           <Button
             variant="outline"
-            onClick={handlePrintAllStocks}
+            onClick={handlePrintClick}
             className="flex items-center space-x-2"
           >
             <Printer className="h-4 w-4" />
-            <span>Print All</span>
+            <span>Print</span>
           </Button>
+
+          {/* Print Dialog */}
+          <Dialog open={isPrintDialogOpen} onOpenChange={setIsPrintDialogOpen}>
+            <DialogContent className="sm:max-w-md">
+              <DialogHeader>
+                <DialogTitle>Print Options</DialogTitle>
+              </DialogHeader>
+              <div className="flex flex-col gap-4 py-4">
+                <Button
+                  onClick={() => {
+                    handlePrint(stocks);
+                    setIsPrintDialogOpen(false);
+                  }}
+                  className="w-full"
+                >
+                  Print All Stocks
+                </Button>
+                {hasActiveFilters() && (
+                  <Button
+                    onClick={() => {
+                      handlePrint(filteredStocks);
+                      setIsPrintDialogOpen(false);
+                    }}
+                    variant="secondary"
+                    className="w-full"
+                  >
+                    Print Filtered Stocks ({filteredStocks.length})
+                  </Button>
+                )}
+              </div>
+            </DialogContent>
+          </Dialog>
 
           <Dialog
             open={isAddDialogOpen}
