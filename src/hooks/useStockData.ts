@@ -1,11 +1,12 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { stockLength } from "@/constants/config";
 
 export interface Stock {
   id: string;
   name: string;
   code: string;
-  length: "16ft" | "12ft";
+  length: stockLength;
   quantity: number;
   weight?: number; // Weight in kg
   created_at: string;
@@ -145,7 +146,7 @@ export const useStockData = () => {
   const createOrUpdateStock = async (stockData: {
     name: string;
     code: string;
-    length: "16ft" | "12ft";
+    length: stockLength;
     quantity: number;
     weight?: number;
   }) => {

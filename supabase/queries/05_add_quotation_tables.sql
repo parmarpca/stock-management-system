@@ -22,7 +22,7 @@ CREATE TABLE quotation_items (
     quotation_id UUID NOT NULL REFERENCES quotations(id) ON DELETE CASCADE,
     stock_name VARCHAR(255) NOT NULL,
     stock_code VARCHAR(50) NOT NULL,
-    length VARCHAR(10) CHECK (length IN ('16ft', '12ft')) NOT NULL,
+    length VARCHAR(10) CHECK (length IN ('16ft', '12ft','14ft')) NOT NULL,
     pieces INTEGER NOT NULL CHECK (pieces > 0),
     price_per_piece DECIMAL(10,2) NOT NULL CHECK (price_per_piece > 0),
     subtotal DECIMAL(12,2) NOT NULL DEFAULT 0,

@@ -1,12 +1,13 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { stockLength } from "@/constants/config";
 
 export interface QuotationItem {
   id: string;
   quotation_id: string;
   stock_name: string;
   stock_code: string;
-  length: "16ft" | "12ft";
+  length: stockLength;
   pieces: number;
   price_per_piece: number;
   subtotal: number;
@@ -49,7 +50,7 @@ export interface Quotation {
 export interface QuotationItemForm {
   stock_name: string;
   stock_code: string;
-  length: "16ft" | "12ft";
+  length: stockLength;
   pieces: number;
   price_per_piece: number;
   is_from_stock_table: boolean;

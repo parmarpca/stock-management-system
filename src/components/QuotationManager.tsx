@@ -44,6 +44,7 @@ import {
 import { useCompanySettings } from "@/hooks/useCompanySettings";
 import { cn } from "@/lib/utils";
 import { COMPANY_INFO } from "@/constants/company";
+import { stockLength, stockLengthOptions } from "@/constants/config";
 
 interface QuotationManagerProps {
   stocks: Stock[];
@@ -142,7 +143,7 @@ const QuotationManager = ({
   const [isManualItem, setIsManualItem] = useState(false);
   const [manualStockName, setManualStockName] = useState("");
   const [manualStockCode, setManualStockCode] = useState("");
-  const [manualLength, setManualLength] = useState<"16ft" | "12ft">("16ft");
+  const [manualLength, setManualLength] = useState<stockLength>("16ft");
 
   // Additional cost states
   const [costLabel, setCostLabel] = useState("");
@@ -160,13 +161,13 @@ const QuotationManager = ({
   // Use company settings from database, fallback to constants
   const companyInfo = companySettings
     ? {
-        name: companySettings.company_name,
-        address: companySettings.company_address,
-        gstin: companySettings.company_gstin,
-        phone: companySettings.company_phone,
-        email: companySettings.company_email,
-        website: companySettings.company_website,
-      }
+      name: companySettings.company_name,
+      address: companySettings.company_address,
+      gstin: companySettings.company_gstin,
+      phone: companySettings.company_phone,
+      email: companySettings.company_email,
+      website: companySettings.company_website,
+    }
     : COMPANY_INFO;
 
   const filteredStocks = stocks.filter(
@@ -630,15 +631,12 @@ const QuotationManager = ({
       <div style="font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 15px; background: white; color: #000; font-size: 12px;">
         <!-- Company Header -->
         <div style="text-align: center; margin-bottom: 20px; border-bottom: 1px solid #000; padding-bottom: 10px;">
-          <h1 style="margin: 0; margin-bottom: 2px; font-size: 20px; font-weight: bold;">${
-            companyInfo.name
-          }</h1>
-          <p style="margin: 0; margin-bottom: 2px; font-size: 12px;">${
-            companyInfo.address
-          }</p>
-          <p style="margin: 0; margin-bottom: 8px; font-size: 11px;">GSTIN: ${
-            companyInfo.gstin
-          }</p>
+          <h1 style="margin: 0; margin-bottom: 2px; font-size: 20px; font-weight: bold;">${companyInfo.name
+      }</h1>
+          <p style="margin: 0; margin-bottom: 2px; font-size: 12px;">${companyInfo.address
+      }</p>
+          <p style="margin: 0; margin-bottom: 8px; font-size: 11px;">GSTIN: ${companyInfo.gstin
+      }</p>
           <h2 style="margin: 0; font-size: 16px; font-weight: bold;">QUOTATION</h2>
         </div>
         
@@ -646,28 +644,24 @@ const QuotationManager = ({
         <div style="display: flex; justify-content: space-between; margin-bottom: 15px;">
           <div style="width: 48%;">
             <h3 style="margin: 0; margin-bottom: 5px; font-size: 13px; font-weight: bold;">Customer Details:</h3>
-            <p style="margin: 2px 0; font-size: 11px;"><strong>Name:</strong> ${
-              quotation.customer_name
-            }</p>
-            ${
-              quotation.customer_address
-                ? `<p style="margin: 2px 0; font-size: 11px;"><strong>Address:</strong> ${quotation.customer_address}</p>`
-                : ""
-            }
-            ${
-              quotation.customer_gstin
-                ? `<p style="margin: 2px 0; font-size: 11px;"><strong>GSTIN:</strong> ${quotation.customer_gstin}</p>`
-                : ""
-            }
+            <p style="margin: 2px 0; font-size: 11px;"><strong>Name:</strong> ${quotation.customer_name
+      }</p>
+            ${quotation.customer_address
+        ? `<p style="margin: 2px 0; font-size: 11px;"><strong>Address:</strong> ${quotation.customer_address}</p>`
+        : ""
+      }
+            ${quotation.customer_gstin
+        ? `<p style="margin: 2px 0; font-size: 11px;"><strong>GSTIN:</strong> ${quotation.customer_gstin}</p>`
+        : ""
+      }
           </div>
           <div style="width: 48%; text-align: right;">
             <h3 style="margin: 0; margin-bottom: 5px; font-size: 13px; font-weight: bold;">Quotation Details:</h3>
-            <p style="margin: 2px 0; font-size: 11px;"><strong>Quotation No:</strong> #${
-              quotation.quotation_number
-            }</p>
+            <p style="margin: 2px 0; font-size: 11px;"><strong>Quotation No:</strong> #${quotation.quotation_number
+      }</p>
             <p style="margin: 2px 0; font-size: 11px;"><strong>Date:</strong> ${new Date(
-              quotation.quotation_date
-            ).toLocaleDateString()}</p>
+        quotation.quotation_date
+      ).toLocaleDateString()}</p>
           </div>
         </div>
 
@@ -676,96 +670,82 @@ const QuotationManager = ({
           <thead>
             <tr style="border: 1px solid #000;">
               <th style="border: 1px solid #000; padding: 4px; text-align: center; font-size: 10px; width: 5%; font-weight: bold;">Sr.</th>
-              <th style="border: 1px solid #000; padding: 4px; text-align: left; font-size: 10px; width: ${
-                showPrices ? "20%" : "25%"
-              }; font-weight: bold;">Item Name</th>
-              <th style="border: 1px solid #000; padding: 4px; text-align: left; font-size: 10px; width: ${
-                showPrices ? "10%" : "15%"
-              }; font-weight: bold;">Code</th>
+              <th style="border: 1px solid #000; padding: 4px; text-align: left; font-size: 10px; width: ${showPrices ? "20%" : "25%"
+      }; font-weight: bold;">Item Name</th>
+              <th style="border: 1px solid #000; padding: 4px; text-align: left; font-size: 10px; width: ${showPrices ? "10%" : "15%"
+      }; font-weight: bold;">Code</th>
               <th style="border: 1px solid #000; padding: 4px; text-align: center; font-size: 10px; width: 8%; font-weight: bold;">Length</th>
               <th style="border: 1px solid #000; padding: 4px; text-align: center; font-size: 10px; width: 8%; font-weight: bold;">Wt.(kg)</th>
               <th style="border: 1px solid #000; padding: 4px; text-align: center; font-size: 10px; width: 6%; font-weight: bold;">Pcs</th>
               <th style="border: 1px solid #000; padding: 4px; text-align: center; font-size: 10px; width: 10%; font-weight: bold;">Net Wt.(kg)</th>
-              ${
-                showPrices
-                  ? `
+              ${showPrices
+        ? `
                 <th style="border: 1px solid #000; padding: 4px; text-align: right; font-size: 10px; width: 12%; font-weight: bold;">Rate</th>
                 <th style="border: 1px solid #000; padding: 4px; text-align: right; font-size: 10px; width: 12%; font-weight: bold;">Amount</th>
               `
-                  : ""
-              }
+        : ""
+      }
             </tr>
           </thead>
           <tbody>
             ${quotation.quotation_items
-              ?.map((item, index) => {
-                const itemWeight = item.weight || 0;
-                const netWeight = itemWeight * item.pieces;
-                const itemTotal = itemWeight
-                  ? netWeight * item.price_per_piece
-                  : item.pieces * item.price_per_piece;
+        ?.map((item, index) => {
+          const itemWeight = item.weight || 0;
+          const netWeight = itemWeight * item.pieces;
+          const itemTotal = itemWeight
+            ? netWeight * item.price_per_piece
+            : item.pieces * item.price_per_piece;
 
-                return `
+          return `
                 <tr>
-                  <td style="border: 1px solid #000; padding: 3px; text-align: center; font-size: 10px;">${
-                    index + 1
-                  }</td>
-                  <td style="border: 1px solid #000; padding: 3px; font-size: 10px;">${
-                    item.stock_name
-                  }</td>
-                  <td style="border: 1px solid #000; padding: 3px; font-size: 10px;">${
-                    item.stock_code
-                  }</td>
-                  <td style="border: 1px solid #000; padding: 3px; text-align: center; font-size: 10px;">${
-                    item.length
-                  }</td>
-                  <td style="border: 1px solid #000; padding: 3px; text-align: center; font-size: 10px;">${
-                    itemWeight ? itemWeight.toFixed(2) : "-"
-                  }</td>
-                  <td style="border: 1px solid #000; padding: 3px; text-align: center; font-size: 10px;">${
-                    item.pieces
-                  }</td>
-                  <td style="border: 1px solid #000; padding: 3px; text-align: center; font-size: 10px;">${
-                    netWeight > 0 ? netWeight.toFixed(2) : "-"
-                  }</td>
-                  ${
-                    showPrices
-                      ? `
+                  <td style="border: 1px solid #000; padding: 3px; text-align: center; font-size: 10px;">${index + 1
+            }</td>
+                  <td style="border: 1px solid #000; padding: 3px; font-size: 10px;">${item.stock_name
+            }</td>
+                  <td style="border: 1px solid #000; padding: 3px; font-size: 10px;">${item.stock_code
+            }</td>
+                  <td style="border: 1px solid #000; padding: 3px; text-align: center; font-size: 10px;">${item.length
+            }</td>
+                  <td style="border: 1px solid #000; padding: 3px; text-align: center; font-size: 10px;">${itemWeight ? itemWeight.toFixed(2) : "-"
+            }</td>
+                  <td style="border: 1px solid #000; padding: 3px; text-align: center; font-size: 10px;">${item.pieces
+            }</td>
+                  <td style="border: 1px solid #000; padding: 3px; text-align: center; font-size: 10px;">${netWeight > 0 ? netWeight.toFixed(2) : "-"
+            }</td>
+                  ${showPrices
+              ? `
                     <td style="border: 1px solid #000; padding: 3px; text-align: right; font-size: 10px;">₹${item.price_per_piece.toFixed(
-                      2
-                    )}${itemWeight ? "/kg" : "/pc"}</td>
+                2
+              )}${itemWeight ? "/kg" : "/pc"}</td>
                     <td style="border: 1px solid #000; padding: 3px; text-align: right; font-size: 10px;">₹${itemTotal.toFixed(
-                      2
-                    )}</td>
+                2
+              )}</td>
                   `
-                      : ""
-                  }
+              : ""
+            }
                 </tr>
               `;
-              })
-              .join("")}
+        })
+        .join("")}
           </tbody>
-          ${
-            totalWeight > 0
-              ? `
+          ${totalWeight > 0
+        ? `
             <tfoot>
               <tr style="border: 1px solid #000;">
-                <td colspan="${
-                  showPrices ? "6" : "6"
-                }" style="border: 1px solid #000; padding: 3px; text-align: right; font-size: 10px; font-weight: bold;">Total Weight:</td>
+                <td colspan="${showPrices ? "6" : "6"
+        }" style="border: 1px solid #000; padding: 3px; text-align: right; font-size: 10px; font-weight: bold;">Total Weight:</td>
                 <td style="border: 1px solid #000; padding: 3px; text-align: center; font-size: 10px; font-weight: bold;">${totalWeight.toFixed(
-                  2
-                )} kg</td>
-                ${
-                  showPrices
-                    ? '<td colspan="2" style="border: 1px solid #000; padding: 3px;"></td>'
-                    : ""
-                }
+          2
+        )} kg</td>
+                ${showPrices
+          ? '<td colspan="2" style="border: 1px solid #000; padding: 3px;"></td>'
+          : ""
+        }
               </tr>
             </tfoot>
           `
-              : ""
-          }
+        : ""
+      }
         </table>
 
         <!-- Totals Section -->
@@ -777,88 +757,80 @@ const QuotationManager = ({
               </tr>
             </thead>
             <tbody>
-              ${
-                showPrices
-                  ? `
+              ${showPrices
+        ? `
                 <tr>
                   <td style="border: 1px solid #000; padding: 3px; text-align: right; font-size: 10px;">Subtotal:</td>
                   <td style="border: 1px solid #000; padding: 3px; text-align: right; font-size: 10px;">₹${quotation.subtotal.toFixed(
-                    2
-                  )}</td>
+          2
+        )}</td>
                 </tr>
               `
-                  : ""
-              }
+        : ""
+      }
               ${quotation.quotation_additional_costs
-                ?.map(
-                  (cost) => `
+        ?.map(
+          (cost) => `
                 <tr>
-                  <td style="border: 1px solid #000; padding: 3px; text-align: right; font-size: 10px;">${
-                    cost.label
-                  }:</td>
-                  <td style="border: 1px solid #000; padding: 3px; text-align: right; font-size: 10px;">${
-                    cost.type === "add" ? "+" : "-"
-                  }₹${cost.amount.toFixed(2)}</td>
+                  <td style="border: 1px solid #000; padding: 3px; text-align: right; font-size: 10px;">${cost.label
+            }:</td>
+                  <td style="border: 1px solid #000; padding: 3px; text-align: right; font-size: 10px;">${cost.type === "add" ? "+" : "-"
+            }₹${cost.amount.toFixed(2)}</td>
                 </tr>
               `
-                )
-                .join("")}
-              ${
-                quotation.gst_enabled
-                  ? `
-                ${
-                  quotation.gst_type === "CGST_SGST"
-                    ? `
+        )
+        .join("")}
+              ${quotation.gst_enabled
+        ? `
+                ${quotation.gst_type === "CGST_SGST"
+          ? `
                   <tr>
                     <td style="border: 1px solid #000; padding: 3px; text-align: right; font-size: 10px;">CGST (${(
-                      quotation.gst_percentage / 2
-                    ).toFixed(1)}%):</td>
+            quotation.gst_percentage / 2
+          ).toFixed(1)}%):</td>
                     <td style="border: 1px solid #000; padding: 3px; text-align: right; font-size: 10px;">₹${(
-                      quotation.gst_amount / 2
-                    ).toFixed(2)}</td>
+            quotation.gst_amount / 2
+          ).toFixed(2)}</td>
                   </tr>
                   <tr>
                     <td style="border: 1px solid #000; padding: 3px; text-align: right; font-size: 10px;">SGST (${(
-                      quotation.gst_percentage / 2
-                    ).toFixed(1)}%):</td>
+            quotation.gst_percentage / 2
+          ).toFixed(1)}%):</td>
                     <td style="border: 1px solid #000; padding: 3px; text-align: right; font-size: 10px;">₹${(
-                      quotation.gst_amount / 2
-                    ).toFixed(2)}</td>
+            quotation.gst_amount / 2
+          ).toFixed(2)}</td>
                   </tr>
                 `
-                    : `
+          : `
                   <tr>
-                    <td style="border: 1px solid #000; padding: 3px; text-align: right; font-size: 10px;">${
-                      quotation.gst_type
-                    } (${quotation.gst_percentage}%):</td>
+                    <td style="border: 1px solid #000; padding: 3px; text-align: right; font-size: 10px;">${quotation.gst_type
+          } (${quotation.gst_percentage}%):</td>
                     <td style="border: 1px solid #000; padding: 3px; text-align: right; font-size: 10px;">₹${quotation.gst_amount.toFixed(
-                      2
-                    )}</td>
+            2
+          )}</td>
                   </tr>
                 `
-                }
+        }
               `
-                  : ""
-              }
-              ${
-                quotation.rounding_adjustment !== 0
-                  ? `
+        : ""
+      }
+              ${quotation.rounding_adjustment !== 0
+        ? `
                 <tr>
-                  <td style="border: 1px solid #000; padding: 3px; text-align: right; font-size: 10px;">Rounding ${
-                    quotation.rounding_adjustment > 0 ? "Up" : "Down"
-                  }:</td>
+                  <td style="border: 1px solid #000; padding: 3px; text-align: right; font-size: 10px;">Rounding ${quotation.rounding_adjustment > 0 ? "Up" : "Down"
+        }:</td>
                   <td style="border: 1px solid #000; padding: 3px; text-align: right; font-size: 10px;">₹${Math.abs(
-                    quotation.rounding_adjustment
-                  ).toFixed(2)}</td>
+          quotation.rounding_adjustment
+        ).toFixed(2)}</td>
                 </tr>
               `
-                  : ""
-              }
+        : ""
+      }
               <tr style="border: 1px solid #000;">
                 <td style="border: 1px solid #000; padding: 5px; text-align: right; font-size: 11px; font-weight: bold;">Net Amount:</td>
                 <td style="border: 1px solid #000; padding: 5px; text-align: right; font-size: 11px; font-weight: bold;">₹${quotation.total_amount.toFixed(
-                  2
-                )}</td>
+        2
+      )}</td>
               </tr>
               <tr>
                 <td colspan="2" style="border: 1px solid #000; padding: 3px; text-align: right; font-size: 9px; color: #666;">
@@ -1168,7 +1140,7 @@ const QuotationManager = ({
                           <Label>Length</Label>
                           <Select
                             value={manualLength}
-                            onValueChange={(value: "16ft" | "12ft") =>
+                            onValueChange={(value: stockLength) =>
                               setManualLength(value)
                             }
                           >
@@ -1176,8 +1148,11 @@ const QuotationManager = ({
                               <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
-                              <SelectItem value="16ft">16ft</SelectItem>
-                              <SelectItem value="12ft">12ft</SelectItem>
+                              {stockLengthOptions.map((len) => (
+                                <SelectItem key={len} value={len}>
+                                  {len}
+                                </SelectItem>
+                              ))}
                             </SelectContent>
                           </Select>
                         </div>
@@ -1210,7 +1185,7 @@ const QuotationManager = ({
                                     className={cn(
                                       "px-4 py-2 cursor-pointer hover:bg-gray-50",
                                       index === selectedStockIndex &&
-                                        "bg-blue-50"
+                                      "bg-blue-50"
                                     )}
                                     onClick={() => handleStockSelect(stock)}
                                   >
@@ -1762,20 +1737,20 @@ const QuotationManager = ({
                             {quotation.quotation_items.some(
                               (item) => item.weight
                             ) && (
-                              <div className="mt-2 pt-2 border-t border-gray-200">
-                                <div className="text-sm font-medium text-blue-700">
-                                  Total Weight:{" "}
-                                  {quotation.quotation_items
-                                    .reduce((sum, item) => {
-                                      const netWeight =
-                                        (item.weight || 0) * item.pieces;
-                                      return sum + netWeight;
-                                    }, 0)
-                                    .toFixed(2)}
-                                  kg
+                                <div className="mt-2 pt-2 border-t border-gray-200">
+                                  <div className="text-sm font-medium text-blue-700">
+                                    Total Weight:{" "}
+                                    {quotation.quotation_items
+                                      .reduce((sum, item) => {
+                                        const netWeight =
+                                          (item.weight || 0) * item.pieces;
+                                        return sum + netWeight;
+                                      }, 0)
+                                      .toFixed(2)}
+                                    kg
+                                  </div>
                                 </div>
-                              </div>
-                            )}
+                              )}
 
                             {/* Additional Costs and Totals */}
                             {showPricesInList && (
@@ -2019,7 +1994,7 @@ const QuotationManager = ({
                       <Label>Length</Label>
                       <Select
                         value={manualLength}
-                        onValueChange={(value: "16ft" | "12ft") =>
+                        onValueChange={(value: stockLength) =>
                           setManualLength(value)
                         }
                       >
@@ -2027,8 +2002,11 @@ const QuotationManager = ({
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="16ft">16ft</SelectItem>
-                          <SelectItem value="12ft">12ft</SelectItem>
+                          {stockLengthOptions.map((len) => (
+                            <SelectItem key={len} value={len}>
+                              {len}
+                            </SelectItem>
+                          ))}
                         </SelectContent>
                       </Select>
                     </div>
@@ -2513,9 +2491,8 @@ const QuotationManager = ({
         open={showSuccessDialog}
         onOpenChange={setShowSuccessDialog}
         title="Quotation Created Successfully!"
-        message={`Quotation for ${
-          createdQuotation?.customer_name || ""
-        } has been created.`}
+        message={`Quotation for ${createdQuotation?.customer_name || ""
+          } has been created.`}
         onPrint={handleSuccessDialogPrint}
         showPrintOption={true}
       />
