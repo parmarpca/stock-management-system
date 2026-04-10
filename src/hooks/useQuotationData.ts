@@ -69,6 +69,7 @@ export interface Customer {
   name: string;
   address?: string;
   gstin_number?: string;
+  mobile_number?: string;
   created_at: string;
 }
 
@@ -127,7 +128,7 @@ export const useQuotationData = () => {
             .from("customers")
             .update(updateData)
             .eq("id", customer.id)
-            .select("id, address, gstin_number")
+            .select("id, address, gstin_number, mobile_number")
             .single();
 
           if (updateError) throw updateError;
@@ -135,6 +136,7 @@ export const useQuotationData = () => {
             id: customer.id,
             address: updatedCustomer?.address,
             gstin_number: updatedCustomer?.gstin_number,
+            mobile_number: updatedCustomer?.mobile_number,
           };
         }
       } else {
@@ -142,13 +144,14 @@ export const useQuotationData = () => {
         const insertData: any = { name: customerName.trim() };
         if (customerAddress) insertData.address = customerAddress;
         if (customerGstin) insertData.gstin_number = customerGstin;
+        // Optionally pass mobileNumber if an argument exists for it, here we assume it's omitted in Quotation create unless we update the params, but the interface holds it at least.
 
         const { data: newCustomer, error: createError } = await (
           supabase as any
         )
           .from("customers")
           .insert([insertData])
-          .select("id, address, gstin_number")
+          .select("id, address, gstin_number, mobile_number")
           .single();
 
         if (createError) throw createError;

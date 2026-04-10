@@ -100,7 +100,7 @@ const QuotationManager = ({
   );
 
   // Filter states
-  const [showTodayOnly, setShowTodayOnly] = useState(true);
+  const [showQuotationsList, setShowQuotationsList] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [showPricesInList, setShowPricesInList] = useState(false);
   const [showFinalPriceInList, setShowFinalPriceInList] = useState(true);
@@ -188,10 +188,12 @@ const QuotationManager = ({
       quotation.id.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const toggleTodayFilter = async () => {
-    const newShowTodayOnly = !showTodayOnly;
-    setShowTodayOnly(newShowTodayOnly);
-    await fetchQuotations(newShowTodayOnly);
+  const toggleQuotationsList = async () => {
+    const newShowList = !showQuotationsList;
+    setShowQuotationsList(newShowList);
+    if (newShowList) {
+      await fetchQuotations(false); // Fetch all when "show list" is clicked
+    }
   };
 
   const handleCustomerInputChange = (value: string) => {
@@ -966,12 +968,12 @@ const QuotationManager = ({
         </div>
         <div className="flex gap-2">
           <Button
-            variant={showTodayOnly ? "default" : "outline"}
-            onClick={toggleTodayFilter}
+            variant={showQuotationsList ? "default" : "outline"}
+            onClick={toggleQuotationsList}
             className="flex items-center space-x-2"
           >
             <Calendar className="h-4 w-4" />
-            <span>Today's Quotations</span>
+            <span>{showQuotationsList ? "Hide Quotations" : "Show Quotations List"}</span>
           </Button>
           <Button
             variant={showPricesInList ? "default" : "outline"}
@@ -1616,246 +1618,245 @@ const QuotationManager = ({
       </Card>
 
       {/* Quotations List */}
-      <Card>
-        <CardHeader>
-          <CardTitle>
-            {showTodayOnly ? "Today's Quotations" : "All Quotations"} (
-            {filteredQuotations.length})
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          {filteredQuotations.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground">
-              {searchQuery
-                ? "No quotations match your search."
-                : "No quotations found. Create your first quotation to get started."}
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {filteredQuotations.map((quotation) => (
-                <div
-                  key={quotation.id}
-                  className="border rounded-lg p-4 hover:bg-gray-50 transition-colors"
-                >
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <div className="flex items-center space-x-4 mb-2">
-                        <div>
-                          <h3 className="font-semibold">
-                            #{quotation.quotation_number} -{" "}
-                            {quotation.customer_name}
-                          </h3>
-                          <p className="text-sm text-gray-500">
-                            {new Date(
-                              quotation.quotation_date
-                            ).toLocaleDateString()}
-                          </p>
-                        </div>
-                        <div className="text-center">
-                          {showFinalPriceInList && (
-                            <>
-                              <p className="text-lg font-bold text-green-600">
-                                ₹{quotation.total_amount.toFixed(2)}
-                              </p>
-                              {quotation.rounding_adjustment !== 0 && (
-                                <p className="text-xs text-gray-500">
-                                  (Rounded{" "}
-                                  {quotation.rounding_adjustment > 0
-                                    ? "up"
-                                    : "down"}{" "}
-                                  from ₹{quotation.raw_total.toFixed(2)})
+      {showQuotationsList && (
+        <Card>
+          <CardHeader className="p-4 sm:p-6 flex flex-row items-center justify-between">
+            <CardTitle className="text-lg">Quotations List ({filteredQuotations.length})</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {filteredQuotations.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                {searchQuery
+                  ? "No quotations match your search."
+                  : "No quotations found. Create your first quotation to get started."}
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {filteredQuotations.map((quotation) => (
+                  <div
+                    key={quotation.id}
+                    className="border rounded-lg p-4 hover:bg-gray-50 transition-colors"
+                  >
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <div className="flex items-center space-x-4 mb-2">
+                          <div>
+                            <h3 className="font-semibold">
+                              #{quotation.quotation_number} -{" "}
+                              {quotation.customer_name}
+                            </h3>
+                            <p className="text-sm text-gray-500">
+                              {new Date(
+                                quotation.quotation_date
+                              ).toLocaleDateString()}
+                            </p>
+                          </div>
+                          <div className="text-center">
+                            {showFinalPriceInList && (
+                              <>
+                                <p className="text-lg font-bold text-green-600">
+                                  ₹{quotation.total_amount.toFixed(2)}
                                 </p>
-                              )}
-                            </>
+                                {quotation.rounding_adjustment !== 0 && (
+                                  <p className="text-xs text-gray-500">
+                                    (Rounded{" "}
+                                    {quotation.rounding_adjustment > 0
+                                      ? "up"
+                                      : "down"}{" "}
+                                    from ₹{quotation.raw_total.toFixed(2)})
+                                  </p>
+                                )}
+                              </>
+                            )}
+                            <p className="text-xs text-gray-500">
+                              {quotation.quotation_items?.length || 0} items
+                            </p>
+                          </div>
+                          {quotation.gst_enabled && (
+                            <Badge variant="outline">
+                              GST {quotation.gst_percentage}%
+                            </Badge>
                           )}
-                          <p className="text-xs text-gray-500">
-                            {quotation.quotation_items?.length || 0} items
-                          </p>
                         </div>
-                        {quotation.gst_enabled && (
-                          <Badge variant="outline">
-                            GST {quotation.gst_percentage}%
-                          </Badge>
-                        )}
-                      </div>
 
-                      {/* Item Details */}
-                      {quotation.quotation_items &&
-                        quotation.quotation_items.length > 0 && (
-                          <div className="mt-3 p-3 bg-gray-50 rounded-md">
-                            <h4 className="text-sm font-medium text-gray-700 mb-2">
-                              Items:
-                            </h4>
-                            <div className="space-y-1">
-                              {quotation.quotation_items.map((item, index) => {
-                                const itemWeight = item.weight || 0;
-                                const totalWeight = itemWeight * item.pieces;
-                                const itemTotal = itemWeight
-                                  ? totalWeight * item.price_per_piece
-                                  : item.pieces * item.price_per_piece;
+                        {/* Item Details */}
+                        {quotation.quotation_items &&
+                          quotation.quotation_items.length > 0 && (
+                            <div className="mt-3 p-3 bg-gray-50 rounded-md">
+                              <h4 className="text-sm font-medium text-gray-700 mb-2">
+                                Items:
+                              </h4>
+                              <div className="space-y-1">
+                                {quotation.quotation_items.map((item, index) => {
+                                  const itemWeight = item.weight || 0;
+                                  const totalWeight = itemWeight * item.pieces;
+                                  const itemTotal = itemWeight
+                                    ? totalWeight * item.price_per_piece
+                                    : item.pieces * item.price_per_piece;
 
-                                return (
-                                  <div
-                                    key={index}
-                                    className="text-sm text-gray-600 flex justify-between"
-                                  >
-                                    <span>
-                                      {item.stock_name} ({item.stock_code})
-                                      {itemWeight > 0 && (
-                                        <>
-                                          {" "}
-                                          - {itemWeight}kg × {item.pieces} ={" "}
-                                          {totalWeight.toFixed(2)}kg
-                                        </>
-                                      )}
-                                      {!itemWeight && (
-                                        <> - {item.pieces} pieces</>
-                                      )}
-                                    </span>
-                                    {showPricesInList && (
-                                      <span className="font-medium">
-                                        {itemWeight > 0 ? (
-                                          <>
-                                            ₹{item.price_per_piece}/kg ×{" "}
-                                            {totalWeight.toFixed(2)}kg
-                                          </>
-                                        ) : (
-                                          <>
-                                            ₹{item.price_per_piece}/pc ×{" "}
-                                            {item.pieces}
-                                          </>
-                                        )}
-                                        {" = "}₹{itemTotal.toFixed(2)}
-                                      </span>
-                                    )}
-                                  </div>
-                                );
-                              })}
-                            </div>
-
-                            {/* Total Weight */}
-                            {quotation.quotation_items.some(
-                              (item) => item.weight
-                            ) && (
-                                <div className="mt-2 pt-2 border-t border-gray-200">
-                                  <div className="text-sm font-medium text-blue-700">
-                                    Total Weight:{" "}
-                                    {quotation.quotation_items
-                                      .reduce((sum, item) => {
-                                        const netWeight =
-                                          (item.weight || 0) * item.pieces;
-                                        return sum + netWeight;
-                                      }, 0)
-                                      .toFixed(2)}
-                                    kg
-                                  </div>
-                                </div>
-                              )}
-
-                            {/* Additional Costs and Totals */}
-                            {showPricesInList && (
-                              <div className="mt-2 pt-2 border-t border-gray-200 space-y-1">
-                                <div className="text-sm text-gray-600 flex justify-between">
-                                  <span>Subtotal:</span>
-                                  <span className="font-medium">
-                                    ₹{quotation.subtotal.toFixed(2)}
-                                  </span>
-                                </div>
-                                {quotation.quotation_additional_costs?.map(
-                                  (cost, index) => (
+                                  return (
                                     <div
                                       key={index}
                                       className="text-sm text-gray-600 flex justify-between"
                                     >
-                                      <span>{cost.label}:</span>
-                                      <span
-                                        className={
-                                          cost.type === "add"
-                                            ? "text-green-600"
-                                            : "text-red-600"
-                                        }
+                                      <span>
+                                        {item.stock_name} ({item.stock_code})
+                                        {itemWeight > 0 && (
+                                          <>
+                                            {" "}
+                                            - {itemWeight}kg × {item.pieces} ={" "}
+                                            {totalWeight.toFixed(2)}kg
+                                          </>
+                                        )}
+                                        {!itemWeight && (
+                                          <> - {item.pieces} pieces</>
+                                        )}
+                                      </span>
+                                      {showPricesInList && (
+                                        <span className="font-medium">
+                                          {itemWeight > 0 ? (
+                                            <>
+                                              ₹{item.price_per_piece}/kg ×{" "}
+                                              {totalWeight.toFixed(2)}kg
+                                            </>
+                                          ) : (
+                                            <>
+                                              ₹{item.price_per_piece}/pc ×{" "}
+                                              {item.pieces}
+                                            </>
+                                          )}
+                                          {" = "}₹{itemTotal.toFixed(2)}
+                                        </span>
+                                      )}
+                                    </div>
+                                  );
+                                })}
+                              </div>
+
+                              {/* Total Weight */}
+                              {quotation.quotation_items.some(
+                                (item) => item.weight
+                              ) && (
+                                  <div className="mt-2 pt-2 border-t border-gray-200">
+                                    <div className="text-sm font-medium text-blue-700">
+                                      Total Weight:{" "}
+                                      {quotation.quotation_items
+                                        .reduce((sum, item) => {
+                                          const netWeight =
+                                            (item.weight || 0) * item.pieces;
+                                          return sum + netWeight;
+                                        }, 0)
+                                        .toFixed(2)}
+                                      kg
+                                    </div>
+                                  </div>
+                                )}
+
+                              {/* Additional Costs and Totals */}
+                              {showPricesInList && (
+                                <div className="mt-2 pt-2 border-t border-gray-200 space-y-1">
+                                  <div className="text-sm text-gray-600 flex justify-between">
+                                    <span>Subtotal:</span>
+                                    <span className="font-medium">
+                                      ₹{quotation.subtotal.toFixed(2)}
+                                    </span>
+                                  </div>
+                                  {quotation.quotation_additional_costs?.map(
+                                    (cost, index) => (
+                                      <div
+                                        key={index}
+                                        className="text-sm text-gray-600 flex justify-between"
                                       >
-                                        {cost.type === "add" ? "+" : "-"}₹
-                                        {cost.amount.toFixed(2)}
+                                        <span>{cost.label}:</span>
+                                        <span
+                                          className={
+                                            cost.type === "add"
+                                              ? "text-green-600"
+                                              : "text-red-600"
+                                          }
+                                        >
+                                          {cost.type === "add" ? "+" : "-"}₹
+                                          {cost.amount.toFixed(2)}
+                                        </span>
+                                      </div>
+                                    )
+                                  )}
+                                  {quotation.gst_enabled && (
+                                    <div className="text-sm text-gray-600 flex justify-between">
+                                      <span>
+                                        GST ({quotation.gst_percentage}%):
+                                      </span>
+                                      <span>
+                                        ₹{quotation.gst_amount.toFixed(2)}
                                       </span>
                                     </div>
-                                  )
-                                )}
-                                {quotation.gst_enabled && (
-                                  <div className="text-sm text-gray-600 flex justify-between">
+                                  )}
+                                  {quotation.rounding_adjustment !== 0 && (
+                                    <div className="text-sm text-gray-600 flex justify-between">
+                                      <span>
+                                        Rounding{" "}
+                                        {quotation.rounding_adjustment > 0
+                                          ? "Up"
+                                          : "Down"}
+                                        :
+                                      </span>
+                                      <span>
+                                        ₹
+                                        {Math.abs(
+                                          quotation.rounding_adjustment
+                                        ).toFixed(2)}
+                                      </span>
+                                    </div>
+                                  )}
+                                  <div className="text-sm font-bold flex justify-between border-t border-gray-300 pt-1">
+                                    <span>Total:</span>
                                     <span>
-                                      GST ({quotation.gst_percentage}%):
-                                    </span>
-                                    <span>
-                                      ₹{quotation.gst_amount.toFixed(2)}
-                                    </span>
-                                  </div>
-                                )}
-                                {quotation.rounding_adjustment !== 0 && (
-                                  <div className="text-sm text-gray-600 flex justify-between">
-                                    <span>
-                                      Rounding{" "}
-                                      {quotation.rounding_adjustment > 0
-                                        ? "Up"
-                                        : "Down"}
-                                      :
-                                    </span>
-                                    <span>
-                                      ₹
-                                      {Math.abs(
-                                        quotation.rounding_adjustment
-                                      ).toFixed(2)}
+                                      ₹{quotation.total_amount.toFixed(2)}
                                     </span>
                                   </div>
-                                )}
-                                <div className="text-sm font-bold flex justify-between border-t border-gray-300 pt-1">
-                                  <span>Total:</span>
-                                  <span>
-                                    ₹{quotation.total_amount.toFixed(2)}
-                                  </span>
+                                  <div className="text-xs text-gray-500 text-right">
+                                    (Pre-rounded: ₹
+                                    {quotation.raw_total.toFixed(2)})
+                                  </div>
                                 </div>
-                                <div className="text-xs text-gray-500 text-right">
-                                  (Pre-rounded: ₹
-                                  {quotation.raw_total.toFixed(2)})
-                                </div>
-                              </div>
-                            )}
-                          </div>
-                        )}
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => {
-                          setQuotationToPrint(quotation);
-                          setPrintDialogOpen(true);
-                        }}
-                      >
-                        <Printer className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleEditQuotation(quotation)}
-                      >
-                        <Edit className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleDeleteQuotation(quotation.id)}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
+                              )}
+                            </div>
+                          )}
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            setQuotationToPrint(quotation);
+                            setPrintDialogOpen(true);
+                          }}
+                        >
+                          <Printer className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleEditQuotation(quotation)}
+                        >
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleDeleteQuotation(quotation.id)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       {/* Edit Dialog */}
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>

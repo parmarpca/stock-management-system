@@ -54,18 +54,21 @@ export type Database = {
         Row: {
           id: string;
           name: string;
+          mobile_number: string | null;
           created_at: string;
           updated_at: string;
         };
         Insert: {
           id?: string;
           name: string;
+          mobile_number?: string | null;
           created_at?: string;
           updated_at?: string;
         };
         Update: {
           id?: string;
           name?: string;
+          mobile_number?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -108,6 +111,19 @@ export type Database = {
           order_date: string;
           color_code: string | null;
           is_hidden: boolean;
+          vehicle_number: string | null;
+          agent_name: string | null;
+          customer_address: string | null;
+          customer_gstin: string | null;
+          subtotal: number;
+          gst_enabled: boolean;
+          gst_type: "CGST_SGST" | "IGST" | "UTGST" | null;
+          gst_percentage: number;
+          gst_amount: number;
+          total_amount: number;
+          raw_total: number;
+          rounding_adjustment: number;
+          show_unit_price: boolean;
           created_at: string;
           updated_at: string;
         };
@@ -117,6 +133,19 @@ export type Database = {
           order_date?: string;
           color_code?: string | null;
           is_hidden?: boolean;
+          vehicle_number?: string | null;
+          agent_name?: string | null;
+          customer_address?: string | null;
+          customer_gstin?: string | null;
+          subtotal?: number;
+          gst_enabled?: boolean;
+          gst_type?: "CGST_SGST" | "IGST" | "UTGST" | null;
+          gst_percentage?: number;
+          gst_amount?: number;
+          total_amount?: number;
+          raw_total?: number;
+          rounding_adjustment?: number;
+          show_unit_price?: boolean;
           created_at?: string;
           updated_at?: string;
         };
@@ -126,6 +155,19 @@ export type Database = {
           order_date?: string;
           color_code?: string | null;
           is_hidden?: boolean;
+          vehicle_number?: string | null;
+          agent_name?: string | null;
+          customer_address?: string | null;
+          customer_gstin?: string | null;
+          subtotal?: number;
+          gst_enabled?: boolean;
+          gst_type?: "CGST_SGST" | "IGST" | "UTGST" | null;
+          gst_percentage?: number;
+          gst_amount?: number;
+          total_amount?: number;
+          raw_total?: number;
+          rounding_adjustment?: number;
+          show_unit_price?: boolean;
           created_at?: string;
           updated_at?: string;
         };
@@ -139,12 +181,51 @@ export type Database = {
           }
         ];
       };
+      order_additional_costs: {
+        Row: {
+          id: string;
+          order_id: string;
+          label: string;
+          type: "add" | "discount";
+          amount: number;
+        };
+        Insert: {
+          id?: string;
+          order_id: string;
+          label: string;
+          type: "add" | "discount";
+          amount: number;
+        };
+        Update: {
+          id?: string;
+          order_id?: string;
+          label?: string;
+          type?: "add" | "discount";
+          amount?: number;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "order_additional_costs_order_id_fkey";
+            columns: ["order_id"];
+            isOneToOne: false;
+            referencedRelation: "orders";
+            referencedColumns: ["id"];
+          }
+        ];
+      };
       order_items: {
         Row: {
           id: string;
           order_id: string;
           stock_id: string;
           pieces_used: number;
+          price_per_piece: number;
+          subtotal: number;
+          weight: number | null;
+          stock_name: string | null;
+          stock_code: string | null;
+          stock_length: string | null;
+          is_from_stock_table: boolean;
           created_at: string;
         };
         Insert: {
@@ -152,6 +233,13 @@ export type Database = {
           order_id: string;
           stock_id: string;
           pieces_used: number;
+          price_per_piece?: number;
+          subtotal?: number;
+          weight?: number | null;
+          stock_name?: string | null;
+          stock_code?: string | null;
+          stock_length?: string | null;
+          is_from_stock_table?: boolean;
           created_at?: string;
         };
         Update: {
@@ -159,6 +247,13 @@ export type Database = {
           order_id?: string;
           stock_id?: string;
           pieces_used?: number;
+          price_per_piece?: number;
+          subtotal?: number;
+          weight?: number | null;
+          stock_name?: string | null;
+          stock_code?: string | null;
+          stock_length?: string | null;
+          is_from_stock_table?: boolean;
           created_at?: string;
         };
         Relationships: [
