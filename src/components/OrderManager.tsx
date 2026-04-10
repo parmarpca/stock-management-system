@@ -11,6 +11,8 @@ import {
   Calendar,
   CheckSquare,
   Square,
+  DollarSign,
+  Percent,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -31,8 +33,9 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
+import { Switch } from "@/components/ui/switch";
 import { SuccessDialog } from "@/components/ui/success-dialog";
-import { Stock, Customer, Order, OrderItem } from "@/hooks/useStockData";
+import { Stock, Customer, Order, OrderItem, OrderAdditionalCost } from "@/hooks/useStockData";
 import { cn } from "@/lib/utils";
 
 interface OrderManagerProps {
@@ -42,18 +45,36 @@ interface OrderManagerProps {
   onOrderCreate: (
     customerId: string,
     items: Omit<OrderItem, "id" | "order_id">[],
-    colorCode?: string
+    colorCode?: string,
+    vehicleNumber?: string,
+    agentName?: string,
+    gstEnabled?: boolean,
+    gstType?: "CGST_SGST" | "IGST" | "UTGST",
+    gstPercentage?: number,
+    showUnitPrice?: boolean,
+    additionalCosts?: Omit<OrderAdditionalCost, "id" | "order_id">[],
+    customerAddress?: string,
+    customerGstin?: string
   ) => Promise<any>;
   onOrderUpdate: (
     orderId: string,
     customerId: string,
     items: Omit<OrderItem, "id" | "order_id">[],
-    colorCode?: string
+    colorCode?: string,
+    vehicleNumber?: string,
+    agentName?: string,
+    gstEnabled?: boolean,
+    gstType?: "CGST_SGST" | "IGST" | "UTGST",
+    gstPercentage?: number,
+    showUnitPrice?: boolean,
+    additionalCosts?: Omit<OrderAdditionalCost, "id" | "order_id">[],
+    customerAddress?: string,
+    customerGstin?: string
   ) => Promise<any>;
   onOrderDelete: (orderId: string) => Promise<any>;
   onOrderHide: (orderId: string) => Promise<any>;
   onOrderShow: (orderId: string) => Promise<any>;
-  onCustomerCreate: (name: string) => Promise<any>;
+  onCustomerCreate: (name: string, mobileNumber?: string) => Promise<any>;
   fetchCustomers: () => Promise<void>;
   fetchOrders: (
     includeHidden?: boolean,
@@ -66,9 +87,12 @@ interface OrderManagerProps {
 interface OrderItemForm {
   stock_id: string;
   pieces_used: number;
+  price_per_piece: number;
+  weight?: number;
   stock_name: string;
   stock_code: string;
   stock_length: string;
+  is_from_stock_table?: boolean;
 }
 
 const OrderManager = ({
@@ -118,9 +142,44 @@ const OrderManager = ({
   const [selectedStockIndex, setSelectedStockIndex] = useState(-1);
 
   // Filter states
+  const [mobileNumber, setMobileNumber] = useState("");
+  const [vehicleNumber, setVehicleNumber] = useState("");
+  const [agentName, setAgentName] = useState("");
+  const [pricePerPiece, setPricePerPiece] = useState<number | "">("");
+  const [itemWeight, setItemWeight] = useState<number | undefined>(undefined);
+
+  // GST States
+  const [gstEnabled, setGstEnabled] = useState(false);
+  const [gstType, setGstType] = useState<"CGST_SGST" | "IGST" | "UTGST">("CGST_SGST");
+  const [gstPercentage, setGstPercentage] = useState(18);
+  const [showUnitPrice, setShowUnitPrice] = useState(true);
+
+  const [customerAddress, setCustomerAddress] = useState("");
+  const [customerGstin, setCustomerGstin] = useState("");
+  const [additionalCosts, setAdditionalCosts] = useState<Omit<OrderAdditionalCost, "id" | "order_id">[]>([]);
+
   //   const [filterCustomer, setFilterCustomer] = useState("");
   const [filterDateFrom, setFilterDateFrom] = useState("");
   const [filterDateTo, setFilterDateTo] = useState("");
+
+  // New cost form states
+  const [newCostLabel, setNewCostLabel] = useState("");
+  const [newCostType, setNewCostType] = useState<"add" | "discount">("add");
+  const [newCostAmount, setNewCostAmount] = useState<number | "">("");
+
+  const addAdditionalCost = () => {
+    if (!newCostLabel || newCostAmount === "") return;
+    setAdditionalCosts((prev) => [
+      ...prev,
+      { label: newCostLabel, type: newCostType, amount: Number(newCostAmount) },
+    ]);
+    setNewCostLabel("");
+    setNewCostAmount("");
+  };
+
+  const removeAdditionalCost = (index: number) => {
+    setAdditionalCosts((prev) => prev.filter((_, i) => i !== index));
+  };
 
   const filteredStocks = stocks.filter(
     (stock) =>
@@ -241,6 +300,7 @@ const OrderManager = ({
     setStockError("");
     setShowStockSuggestions(false);
     setSelectedStockIndex(-1);
+    setItemWeight(stock.weight || undefined);
   };
 
   // Handle keyboard navigation for stock suggestions
@@ -326,15 +386,20 @@ const OrderManager = ({
     const newItem: OrderItemForm = {
       stock_id: selectedStock!.id,
       pieces_used: pieces,
+      price_per_piece: Number(pricePerPiece) || 0,
+      weight: itemWeight,
       stock_name: selectedStock!.name,
       stock_code: selectedStock!.code,
       stock_length: selectedStock!.length,
+      is_from_stock_table: true,
     };
 
     setOrderItems((prev) => [...prev, newItem]);
     setStockSearch("");
     setSelectedStock(null);
     setPieces(0);
+    setPricePerPiece("");
+    setItemWeight(undefined);
     setStockError("");
     setShowStockSuggestions(false);
     setSelectedStockIndex(-1);
@@ -354,16 +419,29 @@ const OrderManager = ({
     setCustomerInput("");
     setSelectedCustomer(null);
     setColorCode("");
+    setVehicleNumber("");
+    setAgentName("");
+    setCustomerAddress("");
+    setCustomerGstin("");
+    setMobileNumber("");
+    setGstEnabled(false);
+    setAdditionalCosts([]);
     setOrderItems([]);
     setOriginalOrderItems([]);
     setStockSearch("");
     setSelectedStock(null);
     setPieces(0);
+    setPricePerPiece("");
+    setItemWeight(undefined);
     setStockError("");
-    setShowCustomerSuggestions(false);
-    setSelectedCustomerIndex(-1);
     setShowStockSuggestions(false);
     setSelectedStockIndex(-1);
+    setGstType("CGST_SGST");
+    setGstPercentage(18);
+    setShowUnitPrice(true);
+    setNewCostLabel("");
+    setNewCostAmount("");
+    setNewCostType("add");
   };
 
   const handleCancelEdit = () => {
@@ -391,7 +469,7 @@ const OrderManager = ({
 
       // Create new customer if needed
       if (!customerId && customerInput.trim()) {
-        const newCustomer = await onCustomerCreate(customerInput.trim());
+        const newCustomer = await onCustomerCreate(customerInput.trim(), mobileNumber);
         customerId = newCustomer.id;
       }
 
@@ -402,9 +480,27 @@ const OrderManager = ({
       const items = orderItems.map((item) => ({
         stock_id: item.stock_id,
         pieces_used: item.pieces_used,
+        price_per_piece: item.price_per_piece,
+        weight: item.weight,
+        stock_name: item.stock_name,
+        stock_code: item.stock_code,
+        stock_length: item.stock_length
       }));
 
-      const newOrder = await onOrderCreate(customerId, items, colorCode);
+      const newOrder = await onOrderCreate(
+        customerId,
+        items,
+        colorCode,
+        vehicleNumber,
+        agentName,
+        gstEnabled,
+        gstType,
+        gstPercentage,
+        showUnitPrice,
+        additionalCosts,
+        customerAddress,
+        customerGstin
+      );
       // Ensure we have the complete order data with customer name
       const completeOrder = {
         ...newOrder,
@@ -442,10 +538,26 @@ const OrderManager = ({
       customers.find((c) => c.id === order.customer_id) || null
     );
     setColorCode(order.color_code || "");
+    setVehicleNumber(order.vehicle_number || "");
+    setAgentName(order.agent_name || "");
+    setGstEnabled(order.gst_enabled || false);
+    setGstType(order.gst_type || "CGST_SGST");
+    setGstPercentage(order.gst_percentage || 18);
+    setShowUnitPrice(order.show_unit_price ?? true);
+
+    // Attempt to get mobile number if available
+    const orderCustomer = customers.find((c) => c.id === order.customer_id);
+    setMobileNumber(orderCustomer?.mobile_number || "");
+    setCustomerAddress(order.customer_address || "");
+    setCustomerGstin(order.customer_gstin || "");
+    setAdditionalCosts(order.order_additional_costs || []);
+
     const items =
       order.order_items?.map((item) => ({
         stock_id: item.stock_id,
         pieces_used: item.pieces_used,
+        price_per_piece: item.price_per_piece || 0,
+        weight: item.weight,
         stock_name: item.stock_name || "",
         stock_code: item.stock_code || "",
         stock_length: item.stock_length || "",
@@ -475,7 +587,7 @@ const OrderManager = ({
 
       // Create new customer if needed
       if (!customerId && customerInput.trim()) {
-        const newCustomer = await onCustomerCreate(customerInput.trim());
+        const newCustomer = await onCustomerCreate(customerInput.trim(), mobileNumber);
         customerId = newCustomer.id;
       }
 
@@ -486,9 +598,29 @@ const OrderManager = ({
       const items = orderItems.map((item) => ({
         stock_id: item.stock_id,
         pieces_used: item.pieces_used,
+        price_per_piece: item.price_per_piece,
+        weight: item.weight,
+        stock_name: item.stock_name,
+        stock_code: item.stock_code,
+        stock_length: item.stock_length,
+        is_from_stock_table: item.is_from_stock_table
       }));
 
-      await onOrderUpdate(editingOrder.id, customerId, items, colorCode);
+      await onOrderUpdate(
+        editingOrder.id,
+        customerId,
+        items,
+        colorCode,
+        vehicleNumber,
+        agentName,
+        gstEnabled,
+        gstType,
+        gstPercentage,
+        showUnitPrice,
+        additionalCosts,
+        customerAddress,
+        customerGstin
+      );
       resetForm();
       setIsEditDialogOpen(false);
       setEditingOrder(null);
@@ -632,83 +764,118 @@ const OrderManager = ({
   };
 
   const handlePrintOrder = (order: Order) => {
+    // Attempt to find customer to get mobile number if available
+    const orderCustomer = customers.find((c) => c.id === order.customer_id);
+    const mobileNo = orderCustomer?.mobile_number || "";
+
     const printContent = `
-      <div style="padding: 10px; font-family: Arial, sans-serif; font-size: 16px; line-height: 1.2;">
-        <div style="text-align: center; margin-bottom: 10px;">
-          <h1 style="margin: 0; font-size: 18px; font-weight: bold;">ORDER RECEIPT</h1>
+      <div style="font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 15px; background: white; color: #000; font-size: 12px;">
+        <div style="text-align: center; margin-bottom: 20px; border-bottom: 1px solid #000; padding-bottom: 10px;">
+          <h1 style="margin: 0; font-size: 20px; font-weight: bold;">ORDER RECEIPT</h1>
         </div>
         
-        <div style="margin-bottom: 10px; padding: 8px; border: 1px solid #ddd; background-color: #f9f9f9;">
-          <table style="width: 100%; border-collapse: collapse;">
-            <tr>
-              <td style="padding: 2px 0; font-weight: bold; width: 20%;">Date:</td>
-              <td style="padding: 2px 0; width: 30%;">${order.order_date}</td>
-              <td style="padding: 2px 0; font-weight: bold; width: 20%;">Time:</td>
-              <td style="padding: 2px 0; width: 30%;">${new Date().toLocaleTimeString()}</td>
-            </tr>
-            <tr>
-              <td style="padding: 2px 0; font-weight: bold;">Customer:</td>
-              <td style="padding: 2px 0;">${order.customer_name}</td>
-              ${
-                order.color_code
-                  ? `<td style="padding: 2px 0; font-weight: bold;">Color:</td>
-                     <td style="padding: 2px 0;">${order.color_code}</td>`
-                  : `<td colspan="2"></td>`
-              }
-            </tr>
-          </table>
+        <div style="display: flex; justify-content: space-between; margin-bottom: 15px;">
+          <div style="width: 48%;">
+            <h3 style="margin: 0; margin-bottom: 5px; font-size: 13px; font-weight: bold;">Customer Details:</h3>
+            <p style="margin: 2px 0; font-size: 11px;"><strong>Name:</strong> ${order.customer_name}</p>
+            
+            ${order.customer_address ? `<p style="margin: 2px 0; font-size: 11px;"><strong>Address:</strong> ${order.customer_address}</p>` : ""}
+            ${order.customer_gstin ? `<p style="margin: 2px 0; font-size: 11px;"><strong>GSTIN:</strong> ${order.customer_gstin}</p>` : ""}
+
+            ${mobileNo ? `<p style="margin: 2px 0; font-size: 11px;"><strong>Mobile:</strong> ${mobileNo}</p>` : ""}
+          </div>
+          <div style="width: 48%; text-align: right;">
+            <h3 style="margin: 0; margin-bottom: 5px; font-size: 13px; font-weight: bold;">Order Details:</h3>
+            <p style="margin: 2px 0; font-size: 11px;"><strong>Date:</strong> ${order.order_date}</p>
+            ${order.color_code ? `<p style="margin: 2px 0; font-size: 11px;"><strong>Color:</strong> ${order.color_code}</p>` : ""}
+            ${order.vehicle_number ? `<p style="margin: 2px 0; font-size: 11px;"><strong>Vehicle:</strong> ${order.vehicle_number}</p>` : ""}
+            ${order.agent_name ? `<p style="margin: 2px 0; font-size: 11px;"><strong>Agent:</strong> ${order.agent_name}</p>` : ""}
+          </div>
         </div>
 
-        <div style="margin-bottom: 10px;">
-          <h2 style="margin: 0 0 5px 0; font-size: 14px; font-weight: bold;">Order Items</h2>
-          <table style="width: 100%; border-collapse: collapse; border: 1px solid #000;">
-            <thead>
-              <tr style="background-color: #f0f0f0;">
-                <th style="border: 1px solid #000; padding: 2px 4px; text-align: left; font-weight: bold; font-size: 16px; width: 15%;">Code</th>
-                <th style="border: 1px solid #000; padding: 2px 4px; text-align: left; font-weight: bold; font-size: 16px; width: 45%;">Item Name</th>
-                <th style="border: 1px solid #000; padding: 2px 4px; text-align: center; font-weight: bold; font-size: 16px; width: 20%;">Length</th>
-                <th style="border: 1px solid #000; padding: 2px 4px; text-align: center; font-weight: bold; font-size: 16px; width: 20%;">Qty</th>
+        
+        <table style="width: 100%; border-collapse: collapse; margin-bottom: 10px; border: 1px solid #000;">
+          <thead>
+            <tr style="border: 1px solid #000;">
+              <th style="border: 1px solid #000; padding: 4px; text-align: center; font-size: 10px; width: 5%; font-weight: bold;">Sr.</th>
+              <th style="border: 1px solid #000; padding: 4px; text-align: left; font-size: 10px; width: 25%; font-weight: bold;">Item Name</th>
+              <th style="border: 1px solid #000; padding: 4px; text-align: left; font-size: 10px; width: 15%; font-weight: bold;">Code</th>
+              <th style="border: 1px solid #000; padding: 4px; text-align: center; font-size: 10px; width: 10%; font-weight: bold;">Length</th>
+              <th style="border: 1px solid #000; padding: 4px; text-align: center; font-size: 10px; width: 10%; font-weight: bold;">Wt.(kg)</th>
+              <th style="border: 1px solid #000; padding: 4px; text-align: center; font-size: 10px; width: 10%; font-weight: bold;">Pcs</th>
+              <th style="border: 1px solid #000; padding: 4px; text-align: center; font-size: 10px; width: 15%; font-weight: bold;">Net Wt.(kg)</th>
+              ${order.show_unit_price ? `<th style="border: 1px solid #000; padding: 4px; text-align: center; font-size: 10px; width: 10%; font-weight: bold;">Price</th>` : ""}
+            </tr>
+          </thead>
+          <tbody>
+            ${order.order_items
+        ?.map((item, index) => {
+          const itemWeight = item.weight || 0;
+          const netWeight = itemWeight * item.pieces_used;
+          return `
+                  <tr>
+                    <td style="border: 1px solid #000; padding: 3px; text-align: center; font-size: 10px;">${index + 1}</td>
+                    <td style="border: 1px solid #000; padding: 3px; font-size: 10px;">${item.stock_name}</td>
+                    <td style="border: 1px solid #000; padding: 3px; font-size: 10px;">${item.stock_code || "N/A"}</td>
+                    <td style="border: 1px solid #000; padding: 3px; text-align: center; font-size: 10px;">${item.stock_length || "N/A"}</td>
+                    <td style="border: 1px solid #000; padding: 3px; text-align: center; font-size: 10px;">${itemWeight ? itemWeight.toFixed(2) : "-"}</td>
+                    <td style="border: 1px solid #000; padding: 3px; text-align: center; font-size: 10px;">${item.pieces_used}</td>
+                    <td style="border: 1px solid #000; padding: 3px; text-align: center; font-size: 10px;">${netWeight > 0 ? netWeight.toFixed(2) : "-"}</td>
+                    ${order.show_unit_price ? `<td style="border: 1px solid #000; padding: 3px; text-align: center; font-size: 10px;">₹${(item.price_per_piece * item.pieces_used).toFixed(2)}</td>` : ""}
+                  </tr>
+                `;
+        })
+        .join("") || "<tr><td colspan='8' style='border: 1px solid #000; padding: 3px; text-align: center; font-size: 10px;'>No items</td></tr>"}
+          </tbody>
+          <tfoot>
+            <tr style="border: 1px solid #000;">
+              <td colspan="5" style="border: 1px solid #000; padding: 3px; text-align: right; font-size: 10px; font-weight: bold;">Total:</td>
+              <td style="border: 1px solid #000; padding: 3px; text-align: center; font-size: 10px; font-weight: bold;">
+                ${order.order_items?.reduce((total, item) => total + item.pieces_used, 0) || 0} pcs
+              </td>
+              <td style="border: 1px solid #000; padding: 3px; text-align: center; font-size: 10px; font-weight: bold;">
+                ${order.order_items?.reduce((sum, item) => sum + ((item.weight || 0) * item.pieces_used), 0).toFixed(2)} kg
+              </td>
+              ${order.show_unit_price ? `<td style="border: 1px solid #000; padding: 3px; text-align: center; font-size: 10px; font-weight: bold;">₹${order.subtotal?.toFixed(2) || "0.00"}</td>` : ""}
+            </tr>
+          </tfoot>
+        </table>
+
+        ${order.show_unit_price ? `
+        <div style="width: 40%; float: right; margin-top: 10px;">
+          <table style="width: 100%; border-collapse: collapse; font-size: 11px;">
+            ${(order.order_additional_costs || []).map(cost => `
+              <tr>
+                <td style="padding: 3px; border-bottom: 1px solid #eaeaea;">${cost.label}</td>
+                <td style="padding: 3px; border-bottom: 1px solid #eaeaea; text-align: right;">${cost.type === "discount" ? "-" : "+"}₹${cost.amount.toFixed(2)}</td>
               </tr>
-            </thead>
-            <tbody>
-              ${
-                order.order_items
-                  ?.map(
-                    (item) =>
-                      `<tr>
-                        <td style="border: 1px solid #000; padding: 2px 4px; font-weight: bold; font-size: 16px; white-space: nowrap;">${
-                          item.stock_code || "N/A"
-                        }</td>
-                        <td style="border: 1px solid #000; padding: 2px 4px; font-size: 16px; max-width: 0; overflow: hidden; text-overflow: ellipsis;">${
-                          item.stock_name
-                        }</td>
-                        <td style="border: 1px solid #000; padding: 2px 4px; text-align: center; font-size: 16px; white-space: nowrap;">${
-                          item.stock_length || "N/A"
-                        }</td>
-                        <td style="border: 1px solid #000; padding: 2px 4px; text-align: center; font-weight: bold; font-size: 16px; white-space: nowrap;">${
-                          item.pieces_used
-                        }</td>
-                      </tr>`
-                  )
-                  .join("") ||
-                "<tr><td colspan='4' style='border: 1px solid #000; padding: 2px 4px; text-align: center; font-size: 16px;'>No items</td></tr>"
-              }
-            </tbody>
-            <tfoot>
-              <tr style="background-color: #f0f0f0;">
-                <td colspan="3" style="border: 1px solid #000; padding: 2px 4px; font-weight: bold; text-align: right; font-size: 16px;">Total:</td>
-                <td style="border: 1px solid #000; padding: 2px 4px; text-align: center; font-weight: bold; font-size: 16px;">
-                  ${
-                    order.order_items?.reduce(
-                      (total, item) => total + item.pieces_used,
-                      0
-                    ) || 0
-                  }
-                </td>
+            `).join("")}
+            ${order.gst_enabled ? `
+              <tr>
+                <td style="padding: 3px; border-bottom: 1px solid #eaeaea; font-weight: bold;">Subtotal</td>
+                <td style="padding: 3px; border-bottom: 1px solid #eaeaea; text-align: right; font-weight: bold;">₹${order.raw_total?.toFixed(2) || "0.00"}</td>
               </tr>
-            </tfoot>
+              <tr>
+                <td style="padding: 3px; border-bottom: 1px solid #eaeaea;">GST (${order.gst_percentage}%)</td>
+                <td style="padding: 3px; border-bottom: 1px solid #eaeaea; text-align: right;">₹${order.gst_amount?.toFixed(2) || "0.00"}</td>
+              </tr>
+            ` : ""}
+            ${order.rounding_adjustment ? `
+              <tr>
+                <td style="padding: 3px; border-bottom: 1px solid #eaeaea;">Round Off</td>
+                <td style="padding: 3px; border-bottom: 1px solid #eaeaea; text-align: right;">${order.rounding_adjustment > 0 ? "+" : ""}₹${order.rounding_adjustment.toFixed(2)}</td>
+              </tr>
+            ` : ""}
+            <tr>
+              <td style="padding: 5px 3px; font-weight: bold; border-top: 2px solid #000;">Grand Total</td>
+              <td style="padding: 5px 3px; font-weight: bold; text-align: right; border-top: 2px solid #000;">₹${order.total_amount?.toFixed(2) || "0.00"}</td>
+            </tr>
           </table>
+          <div style="clear: both;"></div>
         </div>
+        <div style="clear: both;"></div>
+        ` : ""}
+
 
         <div style="margin-top: 15px; text-align: center; font-size: 10px; color: #666;">
           Generated: ${new Date().toLocaleDateString()} ${new Date().toLocaleTimeString()}
@@ -778,12 +945,11 @@ const OrderManager = ({
         </div>
 
         ${selectedOrdersList
-          .map(
-            (order, index) => `
+        .map(
+          (order, index) => `
           <div style="margin-bottom: 8px; page-break-inside: avoid;">
             <div style="background-color: #f0f0f0; padding: 3px; border: 1px solid #000; font-weight: bold; font-size: 16px;">
-              Order #${index + 1} - ${order.customer_name} - ${
-              order.order_date
+              Order #${index + 1} - ${order.customer_name} - ${order.order_date
             }${order.color_code ? ` - Color: ${order.color_code}` : ""}
             </div>
             <table style="width: 100%; border-collapse: collapse; border: 1px solid #000; margin-bottom: 4px;">
@@ -796,48 +962,42 @@ const OrderManager = ({
                 </tr>
               </thead>
               <tbody>
-                ${
-                  order.order_items
-                    ?.map(
-                      (item) => `
+                ${order.order_items
+              ?.map(
+                (item) => `
                   <tr>
-                    <td style="border: 1px solid #000; padding: 2px; font-weight: bold; font-size: 16px; white-space: nowrap;">${
-                      item.stock_code || "N/A"
-                    }</td>
-                    <td style="border: 1px solid #000; padding: 2px; font-size: 16px; max-width: 0; overflow: hidden; text-overflow: ellipsis;">${
-                      item.stock_name
-                    }</td>
-                    <td style="border: 1px solid #000; padding: 2px; text-align: center; font-size: 16px; white-space: nowrap;">${
-                      item.stock_length || "N/A"
-                    }</td>
-                    <td style="border: 1px solid #000; padding: 2px; text-align: center; font-weight: bold; font-size: 16px; white-space: nowrap;">${
-                      item.pieces_used
-                    }</td>
+                    <td style="border: 1px solid #000; padding: 2px; font-weight: bold; font-size: 16px; white-space: nowrap;">${item.stock_code || "N/A"
+                  }</td>
+                    <td style="border: 1px solid #000; padding: 2px; font-size: 16px; max-width: 0; overflow: hidden; text-overflow: ellipsis;">${item.stock_name
+                  }</td>
+                    <td style="border: 1px solid #000; padding: 2px; text-align: center; font-size: 16px; white-space: nowrap;">${item.stock_length || "N/A"
+                  }</td>
+                    <td style="border: 1px solid #000; padding: 2px; text-align: center; font-weight: bold; font-size: 16px; white-space: nowrap;">${item.pieces_used
+                  }</td>
                   </tr>
                 `
-                    )
-                    .join("") ||
-                  '<tr><td colspan="4" style="border: 1px solid #000; padding: 2px; text-align: center; font-size: 16px;">No items</td></tr>'
-                }
+              )
+              .join("") ||
+            '<tr><td colspan="4" style="border: 1px solid #000; padding: 2px; text-align: center; font-size: 16px;">No items</td></tr>'
+            }
               </tbody>
               <tfoot>
                 <tr style="background-color: #f0f0f0;">
                   <td colspan="3" style="border: 1px solid #000; padding: 2px; font-weight: bold; text-align: right; font-size: 16px;">Order Total:</td>
                   <td style="border: 1px solid #000; padding: 2px; text-align: center; font-weight: bold; font-size: 10px;">
-                    ${
-                      order.order_items?.reduce(
-                        (total, item) => total + item.pieces_used,
-                        0
-                      ) || 0
-                    }
+                    ${order.order_items?.reduce(
+              (total, item) => total + item.pieces_used,
+              0
+            ) || 0
+            }
                   </td>
                 </tr>
               </tfoot>
             </table>
           </div>
         `
-          )
-          .join("")}
+        )
+        .join("")}
 
         <div style="margin-top: 8px; padding: 4px; border: 2px solid #000; background-color: #f0f0f0;">
           <table style="width: 100%; border-collapse: collapse;">
@@ -929,72 +1089,130 @@ const OrderManager = ({
                 }}
                 className="space-y-6"
               >
-                {/* Customer Input with Suggestions */}
-                <div className="relative">
-                  <Label htmlFor="customer-input">Customer Name</Label>
-                  <Input
-                    id="customer-input"
-                    value={customerInput}
-                    onChange={(e) => handleCustomerInputChange(e.target.value)}
-                    onKeyDown={handleCustomerKeyDown}
-                    onFocus={() => setShowCustomerSuggestions(true)}
-                    placeholder="Type customer name..."
-                    className="w-full"
-                    autoComplete="off"
-                  />
-                  {showCustomerSuggestions &&
-                    customerInput &&
-                    filteredCustomers.length > 0 && (
-                      <div className="absolute z-10 w-full mt-1 bg-white border rounded-md shadow-lg max-h-40 overflow-y-auto">
-                        {filteredCustomers
-                          .slice(0, 5)
-                          .map((customer, index) => (
-                            <div
-                              key={customer.id}
-                              data-customer-index={index}
-                              className={`p-2 cursor-pointer ${
-                                index === selectedCustomerIndex
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* Customer Input with Suggestions */}
+                  <div className="relative">
+                    <Label htmlFor="customer-input">Customer Name</Label>
+                    <Input
+                      id="customer-input"
+                      value={customerInput}
+                      onChange={(e) => handleCustomerInputChange(e.target.value)}
+                      onKeyDown={handleCustomerKeyDown}
+                      onFocus={() => setShowCustomerSuggestions(true)}
+                      placeholder="Type customer name..."
+                      className="w-full"
+                      autoComplete="off"
+                    />
+                    {showCustomerSuggestions &&
+                      customerInput &&
+                      filteredCustomers.length > 0 && (
+                        <div className="absolute z-10 w-full mt-1 bg-white border rounded-md shadow-lg max-h-40 overflow-y-auto">
+                          {filteredCustomers
+                            .slice(0, 5)
+                            .map((customer, index) => (
+                              <div
+                                key={customer.id}
+                                data-customer-index={index}
+                                className={`p-2 cursor-pointer ${index === selectedCustomerIndex
                                   ? "bg-blue-100"
                                   : "hover:bg-gray-100"
-                              }`}
-                              onClick={() => handleCustomerSelect(customer)}
-                            >
-                              {customer.name}
-                            </div>
-                          ))}
-                      </div>
+                                  }`}
+                                onClick={() => handleCustomerSelect(customer)}
+                              >
+                                {customer.name}
+                              </div>
+                            ))}
+                        </div>
+                      )}
+                    {customerInput && !selectedCustomer && (
+                      <p className="text-sm text-blue-600 mt-1">
+                        New customer "{customerInput}" will be created
+                      </p>
                     )}
-                  {customerInput && !selectedCustomer && (
-                    <p className="text-sm text-blue-600 mt-1">
-                      New customer "{customerInput}" will be created
-                    </p>
-                  )}
+                  </div>
+
+                  <div>
+                    <Label htmlFor="mobile-number">Mobile Number</Label>
+                    <Input
+                      id="mobile-number"
+                      value={mobileNumber}
+                      onChange={(e) => setMobileNumber(e.target.value)}
+                      placeholder="Enter mobile number"
+                      autoComplete="off"
+                    />
+                  </div>
+
+
+                  <div>
+                    <Label htmlFor="customer-address">Address</Label>
+                    <Input
+                      id="customer-address"
+                      value={customerAddress}
+                      onChange={(e) => setCustomerAddress(e.target.value)}
+                      placeholder="Enter address"
+                      autoComplete="off"
+                    />
+                  </div>
+
+                  <div>
+                    <Label htmlFor="customer-gstin">GSTIN Number</Label>
+                    <Input
+                      id="customer-gstin"
+                      value={customerGstin}
+                      onChange={(e) => setCustomerGstin(e.target.value)}
+                      placeholder="Enter GSTIN number"
+                      autoComplete="off"
+                    />
+                  </div>
                 </div>
 
-                <div>
-                  <Label htmlFor="color-code">Color Code</Label>
-                  <Input
-                    id="color-code"
-                    value={colorCode}
-                    onChange={(e) => setColorCode(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") {
-                        e.preventDefault();
-                        const stockSearchInput =
-                          document.getElementById("stock-search");
-                        if (stockSearchInput) stockSearchInput.focus();
-                      }
-                    }}
-                    placeholder="Enter color code"
-                    autoComplete="off"
-                  />
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div>
+                    <Label htmlFor="color-code">Color Code</Label>
+                    <Input
+                      id="color-code"
+                      value={colorCode}
+                      onChange={(e) => setColorCode(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          e.preventDefault();
+                          const vehicleInput = document.getElementById("vehicle-number");
+                          if (vehicleInput) vehicleInput.focus();
+                        }
+                      }}
+                      placeholder="Enter color code"
+                      autoComplete="off"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="vehicle-number">Vehicle Number</Label>
+                    <Input
+                      id="vehicle-number"
+                      value={vehicleNumber}
+                      onChange={(e) => setVehicleNumber(e.target.value)}
+                      placeholder="Enter vehicle number"
+                      autoComplete="off"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="agent-name">Agent Name</Label>
+                    <Input
+                      id="agent-name"
+                      value={agentName}
+                      onChange={(e) => setAgentName(e.target.value)}
+                      placeholder="Enter agent name"
+                      autoComplete="off"
+                    />
+                  </div>
                 </div>
 
                 {/* Add Items Section */}
                 <div className="border rounded-lg p-4 space-y-4">
                   <h3 className="text-lg font-semibold">Add Items to Order</h3>
 
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+
+                  <div className="grid grid-cols-1 md:grid-cols-4 lg:grid-cols-5 gap-4">
                     <div className="relative">
                       <Label htmlFor="stock-search">Search Stock</Label>
                       <Input
@@ -1018,11 +1236,10 @@ const OrderManager = ({
                               <div
                                 key={stock.id}
                                 data-stock-index={index}
-                                className={`p-2 cursor-pointer ${
-                                  index === selectedStockIndex
-                                    ? "bg-blue-100"
-                                    : "hover:bg-gray-100"
-                                }`}
+                                className={`p-2 cursor-pointer ${index === selectedStockIndex
+                                  ? "bg-blue-100"
+                                  : "hover:bg-gray-100"
+                                  }`}
                                 onClick={() => handleStockSelect(stock)}
                               >
                                 <div className="font-medium">{stock.name}</div>
@@ -1069,6 +1286,41 @@ const OrderManager = ({
                       )}
                     </div>
 
+                    <div>
+                      <Label htmlFor="item-weight">Weight (kg)</Label>
+                      <Input
+                        id="item-weight"
+                        type="number"
+                        step="0.01"
+                        value={itemWeight || ""}
+                        onChange={(e) => setItemWeight(Number(e.target.value) || undefined)}
+                        placeholder={selectedStock?.weight ? `${selectedStock.weight} (from stock)` : "Enter weight"}
+                        min="0"
+                        disabled={selectedStock?.weight !== undefined && selectedStock?.weight !== 0 && selectedStock?.weight !== null}
+                      />
+                    </div>
+
+                    <div>
+                      <Label htmlFor="price">Price (₹)</Label>
+                      <Input
+                        id="price"
+                        type="number"
+                        step="0.01"
+                        value={pricePerPiece}
+                        onChange={(e) => setPricePerPiece(Number(e.target.value))}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            e.preventDefault();
+                            if (!isAddItemDisabled) {
+                              addItemToOrder();
+                            }
+                          }
+                        }}
+                        placeholder="Price per piece"
+                        min="0"
+                      />
+                    </div>
+
                     <div className="flex items-end">
                       <Button
                         onClick={addItemToOrder}
@@ -1098,6 +1350,12 @@ const OrderManager = ({
                                 ({item.stock_code}) - {item.stock_length} -{" "}
                                 {item.pieces_used} pieces
                               </span>
+                              {(item.weight || item.price_per_piece > 0) && (
+                                <div className="text-sm text-gray-500 mt-1">
+                                  {item.weight && <span>Weight: {item.weight}kg </span>}
+                                  {item.price_per_piece > 0 && <span>Price: ₹{item.price_per_piece}</span>}
+                                </div>
+                              )}
                             </div>
                             <Button
                               variant="outline"
@@ -1111,6 +1369,151 @@ const OrderManager = ({
                       </div>
                     </div>
                   )}
+                </div>
+
+                {/* Pricing & GST Section */}
+                <div className="border rounded-lg p-4 space-y-4 bg-gray-50/50">
+                  <h3 className="text-lg font-semibold border-bottom pb-2">Pricing & GST</h3>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 items-end">
+                    <div className="flex items-center space-x-2 h-10">
+                      <Switch
+                        id="gst-enabled"
+                        checked={gstEnabled}
+                        onCheckedChange={setGstEnabled}
+                      />
+                      <Label htmlFor="gst-enabled">Enable GST</Label>
+                    </div>
+
+                    {gstEnabled && (
+                      <>
+                        <div>
+                          <Label htmlFor="gst-type">GST Type</Label>
+                          <Select
+                            value={gstType}
+                            onValueChange={(value: any) => setGstType(value)}
+                          >
+                            <SelectTrigger id="gst-type">
+                              <SelectValue placeholder="Select type" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="CGST_SGST">CGST + SGST</SelectItem>
+                              <SelectItem value="IGST">IGST</SelectItem>
+                              <SelectItem value="UTGST">UTGST</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        <div>
+                          <Label htmlFor="gst-percentage">GST %</Label>
+                          <div className="relative">
+                            <Input
+                              id="gst-percentage"
+                              type="number"
+                              value={gstPercentage}
+                              onChange={(e) => setGstPercentage(Number(e.target.value))}
+                              className="pr-8"
+                            />
+                            <Percent className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500" />
+                          </div>
+                        </div>
+                      </>
+                    )}
+
+                    <div className="flex items-center space-x-2 h-10">
+                      <Switch
+                        id="show-unit-price"
+                        checked={showUnitPrice}
+                        onCheckedChange={setShowUnitPrice}
+                      />
+                      <Label htmlFor="show-unit-price">Show Unit Price on Print</Label>
+                    </div>
+                  </div>
+
+                  <div className="space-y-4 pt-4 border-t">
+                    <h4 className="font-medium text-sm text-gray-700">Additional Costs / Discounts</h4>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+                      <div className="md:col-span-1">
+                        <Label htmlFor="cost-label">Label</Label>
+                        <Input
+                          id="cost-label"
+                          value={newCostLabel}
+                          onChange={(e) => setNewCostLabel(e.target.value)}
+                          placeholder="e.g. Transport, Discount"
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="cost-type">Type</Label>
+                        <Select
+                          value={newCostType}
+                          onValueChange={(value: any) => setNewCostType(value)}
+                        >
+                          <SelectTrigger id="cost-type">
+                            <SelectValue placeholder="Type" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="add">Addition (+)</SelectItem>
+                            <SelectItem value="discount">Discount (-)</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div>
+                        <Label htmlFor="cost-amount">Amount (₹)</Label>
+                        <div className="relative">
+                          <Input
+                            id="cost-amount"
+                            type="number"
+                            value={newCostAmount}
+                            onChange={(e) => setNewCostAmount(Number(e.target.value))}
+                            className="pl-8"
+                          />
+                          <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500" />
+                        </div>
+                      </div>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={addAdditionalCost}
+                        disabled={!newCostLabel || newCostAmount === ""}
+                      >
+                        <Plus className="h-4 w-4 mr-2" />
+                        Add
+                      </Button>
+                    </div>
+
+                    {additionalCosts.length > 0 && (
+                      <div className="space-y-2 mt-2">
+                        {additionalCosts.map((cost, index) => (
+                          <div
+                            key={index}
+                            className="flex items-center justify-between bg-white border p-2 rounded shadow-sm"
+                          >
+                            <div className="flex items-center gap-2">
+                              {cost.type === "discount" ? (
+                                <Badge variant="outline" className="text-red-600 bg-red-50 border-red-200">- Discount</Badge>
+                              ) : (
+                                <Badge variant="outline" className="text-green-600 bg-green-50 border-green-200">+ Addition</Badge>
+                              )}
+                              <span className="font-medium">{cost.label}</span>
+                            </div>
+                            <div className="flex items-center gap-3">
+                              <span className="font-semibold text-gray-900">₹{cost.amount.toFixed(2)}</span>
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => removeAdditionalCost(index)}
+                                className="h-8 w-8 p-0 text-red-500 hover:text-red-600"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 </div>
 
                 <div className="flex justify-end space-x-2">
@@ -1211,62 +1614,120 @@ const OrderManager = ({
             }}
             className="space-y-6"
           >
-            {/* Customer Input with Suggestions */}
-            <div className="relative">
-              <Label htmlFor="edit-customer-input">Customer Name</Label>
-              <Input
-                id="edit-customer-input"
-                value={customerInput}
-                onChange={(e) => handleCustomerInputChange(e.target.value)}
-                onKeyDown={handleCustomerKeyDown}
-                onFocus={() => setShowCustomerSuggestions(true)}
-                placeholder="Type customer name..."
-                className="w-full"
-                autoComplete="off"
-              />
-              {showCustomerSuggestions &&
-                customerInput &&
-                filteredCustomers.length > 0 && (
-                  <div className="absolute z-10 w-full mt-1 bg-white border rounded-md shadow-lg max-h-40 overflow-y-auto">
-                    {filteredCustomers.slice(0, 5).map((customer, index) => (
-                      <div
-                        key={customer.id}
-                        data-customer-index={index}
-                        className={`p-2 cursor-pointer ${
-                          index === selectedCustomerIndex
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Customer Input with Suggestions */}
+              <div className="relative">
+                <Label htmlFor="edit-customer-input">Customer Name</Label>
+                <Input
+                  id="edit-customer-input"
+                  value={customerInput}
+                  onChange={(e) => handleCustomerInputChange(e.target.value)}
+                  onKeyDown={handleCustomerKeyDown}
+                  onFocus={() => setShowCustomerSuggestions(true)}
+                  placeholder="Type customer name..."
+                  className="w-full"
+                  autoComplete="off"
+                />
+                {showCustomerSuggestions &&
+                  customerInput &&
+                  filteredCustomers.length > 0 && (
+                    <div className="absolute z-10 w-full mt-1 bg-white border rounded-md shadow-lg max-h-40 overflow-y-auto">
+                      {filteredCustomers.slice(0, 5).map((customer, index) => (
+                        <div
+                          key={customer.id}
+                          data-customer-index={index}
+                          className={`p-2 cursor-pointer ${index === selectedCustomerIndex
                             ? "bg-blue-100"
                             : "hover:bg-gray-100"
-                        }`}
-                        onClick={() => handleCustomerSelect(customer)}
-                      >
-                        {customer.name}
-                      </div>
-                    ))}
-                  </div>
+                            }`}
+                          onClick={() => handleCustomerSelect(customer)}
+                        >
+                          {customer.name}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                {customerInput && !selectedCustomer && (
+                  <p className="text-sm text-blue-600 mt-1">
+                    New customer "{customerInput}" will be created
+                  </p>
                 )}
-              {customerInput && !selectedCustomer && (
-                <p className="text-sm text-blue-600 mt-1">
-                  New customer "{customerInput}" will be created
-                </p>
-              )}
+              </div>
+
+              <div>
+                <Label htmlFor="edit-mobile-number">Mobile Number</Label>
+                <Input
+                  id="edit-mobile-number"
+                  value={mobileNumber}
+                  onChange={(e) => setMobileNumber(e.target.value)}
+                  placeholder="Enter mobile number"
+                  autoComplete="off"
+                />
+              </div>
+
+
+              <div>
+                <Label htmlFor="edit-customer-address">Address</Label>
+                <Input
+                  id="edit-customer-address"
+                  value={customerAddress}
+                  onChange={(e) => setCustomerAddress(e.target.value)}
+                  placeholder="Enter address"
+                  autoComplete="off"
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="edit-customer-gstin">GSTIN Number</Label>
+                <Input
+                  id="edit-customer-gstin"
+                  value={customerGstin}
+                  onChange={(e) => setCustomerGstin(e.target.value)}
+                  placeholder="Enter GSTIN number"
+                  autoComplete="off"
+                />
+              </div>
             </div>
 
-            <div>
-              <Label htmlFor="edit-color-code">Color Code</Label>
-              <Input
-                id="edit-color-code"
-                value={colorCode}
-                onChange={(e) => setColorCode(e.target.value)}
-                placeholder="Enter color code"
-                autoComplete="off"
-              />
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <Label htmlFor="edit-color-code">Color Code</Label>
+                <Input
+                  id="edit-color-code"
+                  value={colorCode}
+                  onChange={(e) => setColorCode(e.target.value)}
+                  placeholder="Enter color code"
+                  autoComplete="off"
+                />
+              </div>
+              <div>
+                <Label htmlFor="edit-vehicle-number">Vehicle Number</Label>
+                <Input
+                  id="edit-vehicle-number"
+                  value={vehicleNumber}
+                  onChange={(e) => setVehicleNumber(e.target.value)}
+                  placeholder="Enter vehicle number"
+                  autoComplete="off"
+                />
+              </div>
+              <div>
+                <Label htmlFor="edit-agent-name">Agent Name</Label>
+                <Input
+                  id="edit-agent-name"
+                  value={agentName}
+                  onChange={(e) => setAgentName(e.target.value)}
+                  placeholder="Enter agent name"
+                  autoComplete="off"
+                />
+              </div>
             </div>
 
             {/* Add Items Section */}
             <div className="border rounded-lg p-4 space-y-4">
               <h3 className="text-lg font-semibold">Edit Order Items</h3>
 
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-4 lg:grid-cols-5 gap-4">
                 <div className="relative">
                   <Label htmlFor="edit-stock-search">Search Stock</Label>
                   <Input
@@ -1290,11 +1751,10 @@ const OrderManager = ({
                           <div
                             key={stock.id}
                             data-stock-index={index}
-                            className={`p-2 cursor-pointer ${
-                              index === selectedStockIndex
-                                ? "bg-blue-100"
-                                : "hover:bg-gray-100"
-                            }`}
+                            className={`p-2 cursor-pointer ${index === selectedStockIndex
+                              ? "bg-blue-100"
+                              : "hover:bg-gray-100"
+                              }`}
                             onClick={() => handleStockSelect(stock)}
                           >
                             <div className="font-medium">{stock.name}</div>
@@ -1331,6 +1791,41 @@ const OrderManager = ({
                   )}
                 </div>
 
+                <div>
+                  <Label htmlFor="edit-item-weight">Weight (kg)</Label>
+                  <Input
+                    id="edit-item-weight"
+                    type="number"
+                    step="0.01"
+                    value={itemWeight || ""}
+                    onChange={(e) => setItemWeight(Number(e.target.value) || undefined)}
+                    placeholder={selectedStock?.weight ? `${selectedStock.weight} (from stock)` : "Enter weight"}
+                    min="0"
+                    disabled={selectedStock?.weight !== undefined && selectedStock?.weight !== 0 && selectedStock?.weight !== null}
+                  />
+                </div>
+
+                <div>
+                  <Label htmlFor="edit-price">Price (₹)</Label>
+                  <Input
+                    id="edit-price"
+                    type="number"
+                    step="0.01"
+                    value={pricePerPiece}
+                    onChange={(e) => setPricePerPiece(Number(e.target.value))}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        if (!isAddItemDisabled) {
+                          addItemToOrder();
+                        }
+                      }
+                    }}
+                    placeholder="Price per piece"
+                    min="0"
+                  />
+                </div>
+
                 <div className="flex items-end">
                   <Button
                     onClick={addItemToOrder}
@@ -1358,6 +1853,12 @@ const OrderManager = ({
                             ({item.stock_code}) - {item.stock_length} -{" "}
                             {item.pieces_used} pieces
                           </span>
+                          {(item.weight || item.price_per_piece > 0) && (
+                            <div className="text-sm text-gray-500 mt-1">
+                              {item.weight && <span>Weight: {item.weight}kg </span>}
+                              {item.price_per_piece > 0 && <span>Price: ₹{item.price_per_piece}</span>}
+                            </div>
+                          )}
                         </div>
                         <Button
                           variant="outline"
@@ -1371,6 +1872,151 @@ const OrderManager = ({
                   </div>
                 </div>
               )}
+            </div>
+
+            {/* Pricing & GST Section */}
+            <div className="border rounded-lg p-4 space-y-4 bg-gray-50/50">
+              <h3 className="text-lg font-semibold border-bottom pb-2">Pricing & GST</h3>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 items-end">
+                <div className="flex items-center space-x-2 h-10">
+                  <Switch
+                    id="edit-gst-enabled"
+                    checked={gstEnabled}
+                    onCheckedChange={setGstEnabled}
+                  />
+                  <Label htmlFor="edit-gst-enabled">Enable GST</Label>
+                </div>
+
+                {gstEnabled && (
+                  <>
+                    <div>
+                      <Label htmlFor="edit-gst-type">GST Type</Label>
+                      <Select
+                        value={gstType}
+                        onValueChange={(value: any) => setGstType(value)}
+                      >
+                        <SelectTrigger id="edit-gst-type">
+                          <SelectValue placeholder="Select type" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="CGST_SGST">CGST + SGST</SelectItem>
+                          <SelectItem value="IGST">IGST</SelectItem>
+                          <SelectItem value="UTGST">UTGST</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div>
+                      <Label htmlFor="edit-gst-percentage">GST %</Label>
+                      <div className="relative">
+                        <Input
+                          id="edit-gst-percentage"
+                          type="number"
+                          value={gstPercentage}
+                          onChange={(e) => setGstPercentage(Number(e.target.value))}
+                          className="pr-8"
+                        />
+                        <Percent className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500" />
+                      </div>
+                    </div>
+                  </>
+                )}
+
+                <div className="flex items-center space-x-2 h-10">
+                  <Switch
+                    id="edit-show-unit-price"
+                    checked={showUnitPrice}
+                    onCheckedChange={setShowUnitPrice}
+                  />
+                  <Label htmlFor="edit-show-unit-price">Show Unit Price on Print</Label>
+                </div>
+              </div>
+
+              <div className="space-y-4 pt-4 border-t">
+                <h4 className="font-medium text-sm text-gray-700">Additional Costs / Discounts</h4>
+                
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+                  <div className="md:col-span-1">
+                    <Label htmlFor="edit-cost-label">Label</Label>
+                    <Input
+                      id="edit-cost-label"
+                      value={newCostLabel}
+                      onChange={(e) => setNewCostLabel(e.target.value)}
+                      placeholder="e.g. Transport, Discount"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="edit-cost-type">Type</Label>
+                    <Select
+                      value={newCostType}
+                      onValueChange={(value: any) => setNewCostType(value)}
+                    >
+                      <SelectTrigger id="edit-cost-type">
+                        <SelectValue placeholder="Type" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="add">Addition (+)</SelectItem>
+                        <SelectItem value="discount">Discount (-)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label htmlFor="edit-cost-amount">Amount (₹)</Label>
+                    <div className="relative">
+                      <Input
+                        id="edit-cost-amount"
+                        type="number"
+                        value={newCostAmount}
+                        onChange={(e) => setNewCostAmount(Number(e.target.value))}
+                        className="pl-8"
+                      />
+                      <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500" />
+                    </div>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={addAdditionalCost}
+                    disabled={!newCostLabel || newCostAmount === ""}
+                  >
+                    <Plus className="h-4 w-4 mr-2" />
+                    Add
+                  </Button>
+                </div>
+
+                {additionalCosts.length > 0 && (
+                  <div className="space-y-2 mt-2">
+                    {additionalCosts.map((cost, index) => (
+                      <div
+                        key={index}
+                        className="flex items-center justify-between bg-white border p-2 rounded shadow-sm"
+                      >
+                        <div className="flex items-center gap-2">
+                          {cost.type === "discount" ? (
+                            <Badge variant="outline" className="text-red-600 bg-red-50 border-red-200">- Discount</Badge>
+                          ) : (
+                            <Badge variant="outline" className="text-green-600 bg-green-50 border-green-200">+ Addition</Badge>
+                          )}
+                          <span className="font-medium">{cost.label}</span>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <span className="font-semibold text-gray-900">₹{cost.amount.toFixed(2)}</span>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => removeAdditionalCost(index)}
+                            className="h-8 w-8 p-0 text-red-500 hover:text-red-600"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
 
             <div className="flex justify-end space-x-2">
@@ -1613,9 +2259,8 @@ const OrderManager = ({
         open={showSuccessDialog}
         onOpenChange={setShowSuccessDialog}
         title="Order Created Successfully!"
-        message={`Order has been created successfully for ${
-          createdOrder?.customer_name || "customer"
-        }.`}
+        message={`Order has been created successfully for ${createdOrder?.customer_name || "customer"
+          }.`}
         showPrintOption={true}
         onPrint={() => createdOrder && handlePrintOrder(createdOrder)}
       />

@@ -14,7 +14,7 @@ CREATE TABLE stocks (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     name VARCHAR(255) NOT NULL,
     code VARCHAR(50) UNIQUE NOT NULL,
-    length VARCHAR(10) CHECK (length IN ('16ft', '12ft')) NOT NULL,
+    length VARCHAR(10) CHECK (length IN ('16ft', '12ft','14ft')) NOT NULL,
     quantity INTEGER NOT NULL DEFAULT 0,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()

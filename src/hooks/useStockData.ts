@@ -1,11 +1,12 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { stockLength } from "@/constants/config";
 
 export interface Stock {
   id: string;
   name: string;
   code: string;
-  length: "16ft" | "12ft";
+  length: stockLength;
   quantity: number;
   weight?: number; // Weight in kg
   created_at: string;
@@ -17,7 +18,16 @@ export interface Customer {
   name: string;
   address?: string;
   gstin_number?: string;
+  mobile_number?: string;
   created_at: string;
+}
+
+export interface OrderAdditionalCost {
+  id: string;
+  order_id: string;
+  label: string;
+  type: "add" | "discount";
+  amount: number;
 }
 
 export interface OrderItem {
@@ -25,9 +35,13 @@ export interface OrderItem {
   order_id: string;
   stock_id: string;
   pieces_used: number;
+  price_per_piece: number;
+  subtotal?: number;
+  weight?: number;
   stock_name?: string;
   stock_code?: string;
   stock_length?: string;
+  is_from_stock_table?: boolean;
 }
 
 export interface Order {
@@ -35,8 +49,22 @@ export interface Order {
   customer_id: string;
   order_date: string;
   color_code?: string;
+  vehicle_number?: string;
+  agent_name?: string;
   customer_name?: string;
+  customer_address?: string;
+  customer_gstin?: string;
+  subtotal?: number;
+  gst_enabled?: boolean;
+  gst_type?: "CGST_SGST" | "IGST" | "UTGST";
+  gst_percentage?: number;
+  gst_amount?: number;
+  total_amount?: number;
+  raw_total?: number;
+  rounding_adjustment?: number;
+  show_unit_price?: boolean;
   order_items?: OrderItem[];
+  order_additional_costs?: OrderAdditionalCost[];
   is_hidden?: boolean;
 }
 
@@ -81,12 +109,18 @@ export const useStockData = () => {
     try {
       let query = supabase.from("orders").select(`
           *,
-          customers(name),
+          customers(name, address, gstin_number),
           order_items(
             id,
             stock_id,
             pieces_used,
-            stocks(name, code, length)
+            price_per_piece,
+            subtotal,
+            weight,
+            stock_name,
+            stock_code,
+            stock_length,
+            is_from_stock_table
           )
         `);
 
@@ -110,12 +144,15 @@ export const useStockData = () => {
         ordersData?.map((order: any) => ({
           ...order,
           customer_name: order.customers?.name,
+          customer_address: order.customers?.address,
+          customer_gstin: order.customers?.gstin_number,
           order_items: order.order_items?.map((item: any) => ({
             ...item,
-            stock_name: item.stocks?.name,
-            stock_code: item.stocks?.code,
-            stock_length: item.stocks?.length,
+            stock_name: item.stock_name || item.stocks?.name,
+            stock_code: item.stock_code || item.stocks?.code,
+            stock_length: item.stock_length || item.stocks?.length,
           })),
+          order_additional_costs: order.order_additional_costs,
         })) || [];
 
       setOrders(formattedOrders);
@@ -124,11 +161,11 @@ export const useStockData = () => {
     }
   };
 
-  const createCustomer = async (name: string) => {
+  const createCustomer = async (name: string, mobile_number?: string) => {
     try {
       const { data, error } = await supabase
         .from("customers")
-        .insert([{ name }])
+        .insert([{ name, mobile_number }])
         .select()
         .single();
 
@@ -145,7 +182,7 @@ export const useStockData = () => {
   const createOrUpdateStock = async (stockData: {
     name: string;
     code: string;
-    length: "16ft" | "12ft";
+    length: stockLength;
     quantity: number;
     weight?: number;
   }) => {
@@ -199,32 +236,94 @@ export const useStockData = () => {
   const createOrder = async (
     customerId: string,
     items: Omit<OrderItem, "id" | "order_id">[],
-    colorCode?: string
+    colorCode?: string,
+    vehicleNumber?: string,
+    agentName?: string,
+    gstEnabled: boolean = false,
+    gstType?: "CGST_SGST" | "IGST" | "UTGST",
+    gstPercentage: number = 18.00,
+    showUnitPrice: boolean = true,
+    additionalCosts?: Omit<OrderAdditionalCost, "id" | "order_id">[],
+    customerAddress?: string,
+    customerGstin?: string
   ) => {
     try {
       // Create the order
       const { data: orderData, error: orderError } = await supabase
         .from("orders")
-        .insert([{ customer_id: customerId, color_code: colorCode }])
+        .insert([{
+          customer_id: customerId,
+          color_code: colorCode,
+          vehicle_number: vehicleNumber,
+          agent_name: agentName,
+          gst_enabled: gstEnabled,
+          gst_type: gstType,
+          gst_percentage: gstPercentage,
+          show_unit_price: showUnitPrice
+        }])
         .select()
         .single();
 
       if (orderError) throw orderError;
+
+      // Update customer address and GSTIN if provided
+      if (customerAddress || customerGstin) {
+        const updateData: any = {};
+        if (customerAddress) updateData.address = customerAddress;
+        if (customerGstin) updateData.gstin_number = customerGstin;
+
+        await supabase
+          .from("customers")
+          .update(updateData)
+          .eq("id", customerId);
+
+        await fetchCustomers();
+      }
 
       // Create order items
       const orderItems = items.map((item) => ({
         order_id: orderData.id,
         stock_id: item.stock_id,
         pieces_used: item.pieces_used,
+        price_per_piece: item.price_per_piece,
+        weight: item.weight,
+        stock_name: item.stock_name,
+        stock_code: item.stock_code,
+        stock_length: item.stock_length,
+        is_from_stock_table: item.is_from_stock_table
       }));
 
       const { error: itemsError } = await supabase
         .from("order_items")
-        .insert(orderItems);
+        .insert(orderItems.map(item => ({ ...item, is_from_stock_table: item.is_from_stock_table ?? true })));
 
       if (itemsError) throw itemsError;
 
-      // Update stock quantities
+      // Add additional costs
+      if (additionalCosts && additionalCosts.length > 0) {
+        const costsToInsert = additionalCosts.map(cost => ({
+          order_id: orderData.id,
+          label: cost.label,
+          type: cost.type,
+          amount: cost.amount
+        }));
+
+        const { error: costsError } = await supabase
+          .from("order_additional_costs")
+          .insert(costsToInsert);
+
+        if (costsError) throw costsError;
+      }
+
+      // Calculate totals using the database function
+      const { error: calcError } = await supabase.rpc(
+        "update_order_totals",
+        { order_uuid: orderData.id }
+      );
+
+      if (calcError) throw calcError;
+
+      // Update stock quantities and weights
       for (const item of items) {
         // First get current quantity
         const { data: stockData, error: stockError } = await supabase
@@ -237,9 +336,14 @@ export const useStockData = () => {
 
         const newQuantity = stockData.quantity - item.pieces_used;
 
+        const updateData: any = { quantity: newQuantity };
+        if (item.weight) {
+          updateData.weight = item.weight;
+        }
+
         const { error: updateError } = await supabase
           .from("stocks")
-          .update({ quantity: newQuantity })
+          .update(updateData)
           .eq("id", item.stock_id);
 
         if (updateError) throw updateError;
@@ -345,19 +449,29 @@ export const useStockData = () => {
     orderId: string,
     customerId: string,
     items: Omit<OrderItem, "id" | "order_id">[],
-    colorCode?: string
+    colorCode?: string,
+    vehicleNumber?: string,
+    agentName?: string,
+    gstEnabled: boolean = false,
+    gstType?: "CGST_SGST" | "IGST" | "UTGST",
+    gstPercentage: number = 18.00,
+    showUnitPrice: boolean = true,
+    additionalCosts?: Omit<OrderAdditionalCost, "id" | "order_id">[],
+    customerAddress?: string,
+    customerGstin?: string
   ) => {
     try {
       // First get existing order items to restore stock quantities
       const { data: existingItems, error: fetchError } = await supabase
         .from("order_items")
-        .select("stock_id, pieces_used")
+        .select("stock_id, pieces_used, is_from_stock_table")
         .eq("order_id", orderId);
 
       if (fetchError) throw fetchError;
 
-      // Restore stock quantities from existing items
+      // Restore stock quantities from existing items (only if from stock)
       for (const item of existingItems || []) {
+        if (!item.is_from_stock_table || !item.stock_id) continue;
         const { data: stockData, error: stockError } = await supabase
           .from("stocks")
           .select("quantity")
@@ -379,10 +493,33 @@ export const useStockData = () => {
       // Update the order
       const { error: orderError } = await supabase
         .from("orders")
-        .update({ customer_id: customerId, color_code: colorCode })
+        .update({
+          customer_id: customerId,
+          color_code: colorCode,
+          vehicle_number: vehicleNumber,
+          agent_name: agentName,
+          gst_enabled: gstEnabled,
+          gst_type: gstType,
+          gst_percentage: gstPercentage,
+          show_unit_price: showUnitPrice
+        })
         .eq("id", orderId);
 
       if (orderError) throw orderError;
+
+      // Update customer address and GSTIN if provided
+      if (customerAddress || customerGstin) {
+        const updateData: any = {};
+        if (customerAddress) updateData.address = customerAddress;
+        if (customerGstin) updateData.gstin_number = customerGstin;
+
+        await supabase
+          .from("customers")
+          .update(updateData)
+          .eq("id", customerId);
+
+        await fetchCustomers();
+      }
 
       // Delete existing order items
       const { error: deleteItemsError } = await supabase
@@ -397,16 +534,55 @@ export const useStockData = () => {
         order_id: orderId,
         stock_id: item.stock_id,
         pieces_used: item.pieces_used,
+        price_per_piece: item.price_per_piece,
+        weight: item.weight,
+        stock_name: item.stock_name,
+        stock_code: item.stock_code,
+        stock_length: item.stock_length,
+        is_from_stock_table: item.is_from_stock_table
       }));
 
       const { error: itemsError } = await supabase
         .from("order_items")
-        .insert(orderItems);
+        .insert(orderItems.map(item => ({ ...item, is_from_stock_table: item.is_from_stock_table ?? true })));
 
       if (itemsError) throw itemsError;
 
-      // Update stock quantities for new items
+      // Delete existing order additional costs
+      const { error: deleteCostsError } = await supabase
+        .from("order_additional_costs")
+        .delete()
+        .eq("order_id", orderId);
+
+      if (deleteCostsError) throw deleteCostsError;
+
+      // Create new additional costs
+      if (additionalCosts && additionalCosts.length > 0) {
+        const costsToInsert = additionalCosts.map(cost => ({
+          order_id: orderId,
+          label: cost.label,
+          type: cost.type,
+          amount: cost.amount
+        }));
+
+        const { error: costsError } = await supabase
+          .from("order_additional_costs")
+          .insert(costsToInsert);
+
+        if (costsError) throw costsError;
+      }
+
+      // Calculate totals using the database function
+      const { error: calcError } = await supabase.rpc(
+        "update_order_totals",
+        { order_uuid: orderId }
+      );
+
+      if (calcError) throw calcError;
+
+      // Update stock quantities and weights for new items
       for (const item of items) {
+        if (!item.is_from_stock_table || !item.stock_id) continue;
         const { data: stockData, error: stockError } = await supabase
           .from("stocks")
           .select("quantity")
@@ -417,9 +593,14 @@ export const useStockData = () => {
 
         const newQuantity = stockData.quantity - item.pieces_used;
 
+        const updateData: any = { quantity: newQuantity };
+        if (item.weight) {
+          updateData.weight = item.weight;
+        }
+
         const { error: updateError } = await supabase
           .from("stocks")
-          .update({ quantity: newQuantity })
+          .update(updateData)
           .eq("id", item.stock_id);
 
         if (updateError) throw updateError;

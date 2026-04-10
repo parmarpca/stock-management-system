@@ -6,12 +6,13 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { stockLength, stockLengthOptions } from '@/constants/config';
 
 interface Stock {
   id: string;
   name: string;
   code: string;
-  length: '16ft' | '12ft';
+  length: stockLength;
   quantity: number;
   created_at: string;
   updated_at: string;
@@ -34,12 +35,12 @@ interface OrderFormProps {
 const OrderForm = ({ stocks, customers, setCustomers, onOrderCreate }: OrderFormProps) => {
   const [customerName, setCustomerName] = useState('');
   const [colorCode, setColorCode] = useState('');
-  const [length, setLength] = useState<'16ft' | '12ft'>('16ft');
+  const [length, setLength] = useState<stockLength>('16ft');
   const [stockSearch, setStockSearch] = useState('');
   const [selectedStock, setSelectedStock] = useState<Stock | null>(null);
   const [pieces, setPieces] = useState(0);
 
-  const filteredStocks = stocks.filter(stock => 
+  const filteredStocks = stocks.filter(stock =>
     stock.name.toLowerCase().includes(stockSearch.toLowerCase()) ||
     stock.code.toLowerCase().includes(stockSearch.toLowerCase())
   );
@@ -63,7 +64,7 @@ const OrderForm = ({ stocks, customers, setCustomers, onOrderCreate }: OrderForm
 
     // Find or create customer
     let customer = customers.find(c => c.name.toLowerCase() === customerName.toLowerCase());
-    
+
     if (!customer) {
       customer = {
         id: Date.now().toString(),
@@ -138,13 +139,16 @@ const OrderForm = ({ stocks, customers, setCustomers, onOrderCreate }: OrderForm
 
           <div>
             <Label htmlFor="length">Length</Label>
-            <Select value={length} onValueChange={(value: '16ft' | '12ft') => setLength(value)}>
+            <Select value={length} onValueChange={(value: stockLength) => setLength(value)}>
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="16ft">16ft</SelectItem>
-                <SelectItem value="12ft">12ft</SelectItem>
+                {stockLengthOptions.map((len) => (
+                  <SelectItem key={len} value={len}>
+                    {len}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>
@@ -157,7 +161,7 @@ const OrderForm = ({ stocks, customers, setCustomers, onOrderCreate }: OrderForm
               onChange={(e) => setStockSearch(e.target.value)}
               placeholder="Search stock by name or code..."
             />
-            
+
             {stockSearch && filteredStocks.length > 0 && !selectedStock && (
               <div className="mt-2 border rounded-md max-h-48 overflow-y-auto">
                 {filteredStocks.slice(0, 5).map(stock => (
@@ -203,8 +207,8 @@ const OrderForm = ({ stocks, customers, setCustomers, onOrderCreate }: OrderForm
             )}
           </div>
 
-          <Button 
-            onClick={handleSubmit} 
+          <Button
+            onClick={handleSubmit}
             className="w-full"
             disabled={!customerName || !colorCode || !selectedStock || pieces <= 0 || (selectedStock && pieces > selectedStock.quantity)}
           >

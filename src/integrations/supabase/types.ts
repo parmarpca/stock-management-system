@@ -1,3 +1,5 @@
+import { stockLength } from "@/constants/config";
+
 export type Json =
   | string
   | number
@@ -52,18 +54,21 @@ export type Database = {
         Row: {
           id: string;
           name: string;
+          mobile_number: string | null;
           created_at: string;
           updated_at: string;
         };
         Insert: {
           id?: string;
           name: string;
+          mobile_number?: string | null;
           created_at?: string;
           updated_at?: string;
         };
         Update: {
           id?: string;
           name?: string;
+          mobile_number?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -74,7 +79,7 @@ export type Database = {
           id: string;
           name: string;
           code: string;
-          length: "16ft" | "12ft";
+          length: stockLength;
           quantity: number;
           created_at: string;
           updated_at: string;
@@ -83,7 +88,7 @@ export type Database = {
           id?: string;
           name: string;
           code: string;
-          length: "16ft" | "12ft";
+          length: stockLength;
           quantity?: number;
           created_at?: string;
           updated_at?: string;
@@ -92,7 +97,7 @@ export type Database = {
           id?: string;
           name?: string;
           code?: string;
-          length?: "16ft" | "12ft";
+          length?: stockLength;
           quantity?: number;
           created_at?: string;
           updated_at?: string;
@@ -106,6 +111,19 @@ export type Database = {
           order_date: string;
           color_code: string | null;
           is_hidden: boolean;
+          vehicle_number: string | null;
+          agent_name: string | null;
+          customer_address: string | null;
+          customer_gstin: string | null;
+          subtotal: number;
+          gst_enabled: boolean;
+          gst_type: "CGST_SGST" | "IGST" | "UTGST" | null;
+          gst_percentage: number;
+          gst_amount: number;
+          total_amount: number;
+          raw_total: number;
+          rounding_adjustment: number;
+          show_unit_price: boolean;
           created_at: string;
           updated_at: string;
         };
@@ -115,6 +133,19 @@ export type Database = {
           order_date?: string;
           color_code?: string | null;
           is_hidden?: boolean;
+          vehicle_number?: string | null;
+          agent_name?: string | null;
+          customer_address?: string | null;
+          customer_gstin?: string | null;
+          subtotal?: number;
+          gst_enabled?: boolean;
+          gst_type?: "CGST_SGST" | "IGST" | "UTGST" | null;
+          gst_percentage?: number;
+          gst_amount?: number;
+          total_amount?: number;
+          raw_total?: number;
+          rounding_adjustment?: number;
+          show_unit_price?: boolean;
           created_at?: string;
           updated_at?: string;
         };
@@ -124,6 +155,19 @@ export type Database = {
           order_date?: string;
           color_code?: string | null;
           is_hidden?: boolean;
+          vehicle_number?: string | null;
+          agent_name?: string | null;
+          customer_address?: string | null;
+          customer_gstin?: string | null;
+          subtotal?: number;
+          gst_enabled?: boolean;
+          gst_type?: "CGST_SGST" | "IGST" | "UTGST" | null;
+          gst_percentage?: number;
+          gst_amount?: number;
+          total_amount?: number;
+          raw_total?: number;
+          rounding_adjustment?: number;
+          show_unit_price?: boolean;
           created_at?: string;
           updated_at?: string;
         };
@@ -137,12 +181,51 @@ export type Database = {
           }
         ];
       };
+      order_additional_costs: {
+        Row: {
+          id: string;
+          order_id: string;
+          label: string;
+          type: "add" | "discount";
+          amount: number;
+        };
+        Insert: {
+          id?: string;
+          order_id: string;
+          label: string;
+          type: "add" | "discount";
+          amount: number;
+        };
+        Update: {
+          id?: string;
+          order_id?: string;
+          label?: string;
+          type?: "add" | "discount";
+          amount?: number;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "order_additional_costs_order_id_fkey";
+            columns: ["order_id"];
+            isOneToOne: false;
+            referencedRelation: "orders";
+            referencedColumns: ["id"];
+          }
+        ];
+      };
       order_items: {
         Row: {
           id: string;
           order_id: string;
           stock_id: string;
           pieces_used: number;
+          price_per_piece: number;
+          subtotal: number;
+          weight: number | null;
+          stock_name: string | null;
+          stock_code: string | null;
+          stock_length: string | null;
+          is_from_stock_table: boolean;
           created_at: string;
         };
         Insert: {
@@ -150,6 +233,13 @@ export type Database = {
           order_id: string;
           stock_id: string;
           pieces_used: number;
+          price_per_piece?: number;
+          subtotal?: number;
+          weight?: number | null;
+          stock_name?: string | null;
+          stock_code?: string | null;
+          stock_length?: string | null;
+          is_from_stock_table?: boolean;
           created_at?: string;
         };
         Update: {
@@ -157,6 +247,13 @@ export type Database = {
           order_id?: string;
           stock_id?: string;
           pieces_used?: number;
+          price_per_piece?: number;
+          subtotal?: number;
+          weight?: number | null;
+          stock_name?: string | null;
+          stock_code?: string | null;
+          stock_length?: string | null;
+          is_from_stock_table?: boolean;
           created_at?: string;
         };
         Relationships: [
@@ -243,86 +340,86 @@ type DefaultSchema = Database[Extract<keyof Database, "public">];
 
 export type Tables<
   DefaultSchemaTableNameOrOptions extends
-    | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
-    | { schema: keyof Database },
+  | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
+  | { schema: keyof Database },
   TableName extends DefaultSchemaTableNameOrOptions extends {
     schema: keyof Database;
   }
-    ? keyof (Database[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
-        Database[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
-    : never = never
+  ? keyof (Database[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+    Database[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
+  : never = never
 > = DefaultSchemaTableNameOrOptions extends { schema: keyof Database }
   ? (Database[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
-      Database[DefaultSchemaTableNameOrOptions["schema"]]["Views"])[TableName] extends {
+    Database[DefaultSchemaTableNameOrOptions["schema"]]["Views"])[TableName] extends {
       Row: infer R;
     }
-    ? R
-    : never
+  ? R
+  : never
   : DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema["Tables"] &
-      DefaultSchema["Views"])
+    DefaultSchema["Views"])
   ? (DefaultSchema["Tables"] &
-      DefaultSchema["Views"])[DefaultSchemaTableNameOrOptions] extends {
+    DefaultSchema["Views"])[DefaultSchemaTableNameOrOptions] extends {
       Row: infer R;
     }
-    ? R
-    : never
+  ? R
+  : never
   : never;
 
 export type TablesInsert<
   DefaultSchemaTableNameOrOptions extends
-    | keyof DefaultSchema["Tables"]
-    | { schema: keyof Database },
+  | keyof DefaultSchema["Tables"]
+  | { schema: keyof Database },
   TableName extends DefaultSchemaTableNameOrOptions extends {
     schema: keyof Database;
   }
-    ? keyof Database[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never
+  ? keyof Database[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+  : never = never
 > = DefaultSchemaTableNameOrOptions extends { schema: keyof Database }
   ? Database[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
-      Insert: infer I;
-    }
-    ? I
-    : never
+    Insert: infer I;
+  }
+  ? I
+  : never
   : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
   ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
-      Insert: infer I;
-    }
-    ? I
-    : never
+    Insert: infer I;
+  }
+  ? I
+  : never
   : never;
 
 export type TablesUpdate<
   DefaultSchemaTableNameOrOptions extends
-    | keyof DefaultSchema["Tables"]
-    | { schema: keyof Database },
+  | keyof DefaultSchema["Tables"]
+  | { schema: keyof Database },
   TableName extends DefaultSchemaTableNameOrOptions extends {
     schema: keyof Database;
   }
-    ? keyof Database[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never
+  ? keyof Database[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+  : never = never
 > = DefaultSchemaTableNameOrOptions extends { schema: keyof Database }
   ? Database[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
-      Update: infer U;
-    }
-    ? U
-    : never
+    Update: infer U;
+  }
+  ? U
+  : never
   : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
   ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
-      Update: infer U;
-    }
-    ? U
-    : never
+    Update: infer U;
+  }
+  ? U
+  : never
   : never;
 
 export type Enums<
   DefaultSchemaEnumNameOrOptions extends
-    | keyof DefaultSchema["Enums"]
-    | { schema: keyof Database },
+  | keyof DefaultSchema["Enums"]
+  | { schema: keyof Database },
   EnumName extends DefaultSchemaEnumNameOrOptions extends {
     schema: keyof Database;
   }
-    ? keyof Database[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
-    : never = never
+  ? keyof Database[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
+  : never = never
 > = DefaultSchemaEnumNameOrOptions extends { schema: keyof Database }
   ? Database[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"][EnumName]
   : DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema["Enums"]
@@ -331,13 +428,13 @@ export type Enums<
 
 export type CompositeTypes<
   PublicCompositeTypeNameOrOptions extends
-    | keyof DefaultSchema["CompositeTypes"]
-    | { schema: keyof Database },
+  | keyof DefaultSchema["CompositeTypes"]
+  | { schema: keyof Database },
   CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
     schema: keyof Database;
   }
-    ? keyof Database[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
-    : never = never
+  ? keyof Database[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
+  : never = never
 > = PublicCompositeTypeNameOrOptions extends { schema: keyof Database }
   ? Database[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
   : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeTypes"]

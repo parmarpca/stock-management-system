@@ -31,12 +31,13 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { supabase } from "@/integrations/supabase/client";
+import { stockLength, stockLengthOptions } from "@/constants/config";
 
 interface Stock {
   id: string;
   name: string;
   code: string;
-  length: "16ft" | "12ft";
+  length: stockLength;
   quantity: number;
   weight?: number; // Weight in kg
   created_at: string;
@@ -61,7 +62,7 @@ interface StockOverviewProps {
   onStockCreate: (stockData: {
     name: string;
     code: string;
-    length: "16ft" | "12ft";
+    length: stockLength;
     quantity: number;
     weight?: number;
   }) => Promise<any>;
@@ -98,7 +99,7 @@ const StockOverview = ({
   const [newStock, setNewStock] = useState({
     name: "",
     code: "",
-    length: "16ft" as "16ft" | "12ft",
+    length: "16ft" as stockLength,
     quantity: 0,
     weight: undefined as number | undefined,
   });
@@ -393,15 +394,14 @@ const StockOverview = ({
       <div style="padding: 8px; font-family: Arial, sans-serif; font-size: 10px; line-height: 1.2;">
         <div style="text-align: center; margin-bottom: 8px;">
           <h1 style="margin: 0; font-size: 16px; font-weight: bold;">STOCK INVENTORY</h1>
-          ${
-            searchTerm || selectedPrefix || showLowStockOnly
-              ? `<div style="color: #666; font-size: 12px; margin-top: 4px;">
+          ${searchTerm || selectedPrefix || showLowStockOnly
+        ? `<div style="color: #666; font-size: 12px; margin-top: 4px;">
               ${searchTerm ? `Search: "${searchTerm}"` : ""}
               ${selectedPrefix ? `Prefix: ${selectedPrefix}` : ""}
               ${showLowStockOnly ? "Low Stock Only" : ""}
             </div>`
-              : ""
-          }
+        : ""
+      }
         </div>
         
         <div style="margin-bottom: 8px; padding: 6px; border: 1px solid #ddd; background-color: #f9f9f9;">
@@ -416,9 +416,8 @@ const StockOverview = ({
               <td style="padding: 1px 0; font-weight: bold;">Items:</td>
               <td style="padding: 1px 0;">${sortedStocks.length}</td>
               <td style="padding: 1px 0; font-weight: bold;">Low Stock:</td>
-              <td style="padding: 1px 0; color: ${
-                lowStockCount > 0 ? "red" : "green"
-              }; font-weight: bold;">${lowStockCount}</td>
+              <td style="padding: 1px 0; color: ${lowStockCount > 0 ? "red" : "green"
+      }; font-weight: bold;">${lowStockCount}</td>
             </tr>
             <tr>
               <td style="padding: 1px 0; font-weight: bold;">Total Qty:</td>
@@ -442,36 +441,29 @@ const StockOverview = ({
             </thead>
             <tbody>
               ${sortedStocks
-                .map(
-                  (stock) => `
-                <tr ${
-                  stock.quantity < 50
-                    ? 'style="background-color: #ffebee;"'
-                    : ""
-                }>
-                  <td style="border: 1px solid #000; padding: 3px; font-weight: bold; font-size: 14px;">${
-                    stock.code
-                  }</td>
-                  <td style="border: 1px solid #000; padding: 3px; font-size: 14px;">${
-                    stock.name
-                  }</td>
-                  <td style="border: 1px solid #000; padding: 3px; text-align: center; font-size: 14px;">${
-                    stock.length
-                  }</td>
-                  <td style="border: 1px solid #000; padding: 3px; text-align: center; font-size: 14px;">${
-                    stock.weight ? `${stock.weight}kg` : "-"
-                  }</td>
-                  <td style="border: 1px solid #000; padding: 3px; text-align: center; font-weight: bold; font-size: 14px; ${
-                    stock.quantity < 50 ? "color: red;" : "color: green;"
-                  }">${stock.quantity}</td>
-                  <td style="border: 1px solid #000; padding: 3px; text-align: center; font-weight: bold; font-size: 14px; ${
-                    stock.quantity < 50 ? "color: red;" : "color: green;"
-                  }">
+        .map(
+          (stock) => `
+                <tr ${stock.quantity < 50
+              ? 'style="background-color: #ffebee;"'
+              : ""
+            }>
+                  <td style="border: 1px solid #000; padding: 3px; font-weight: bold; font-size: 14px;">${stock.code
+            }</td>
+                  <td style="border: 1px solid #000; padding: 3px; font-size: 14px;">${stock.name
+            }</td>
+                  <td style="border: 1px solid #000; padding: 3px; text-align: center; font-size: 14px;">${stock.length
+            }</td>
+                  <td style="border: 1px solid #000; padding: 3px; text-align: center; font-size: 14px;">${stock.weight ? `${stock.weight}kg` : "-"
+            }</td>
+                  <td style="border: 1px solid #000; padding: 3px; text-align: center; font-weight: bold; font-size: 14px; ${stock.quantity < 50 ? "color: red;" : "color: green;"
+            }">${stock.quantity}</td>
+                  <td style="border: 1px solid #000; padding: 3px; text-align: center; font-weight: bold; font-size: 14px; ${stock.quantity < 50 ? "color: red;" : "color: green;"
+            }">
                     ${stock.quantity < 50 ? "LOW" : "OK"}
                   </td>
                 </tr>`
-                )
-                .join("")}
+        )
+        .join("")}
             </tbody>
             <tfoot>
               <tr style="background-color: #f0f0f0;">
@@ -479,9 +471,8 @@ const StockOverview = ({
                 <td style="border: 1px solid #000; padding: 3px; text-align: center; font-weight: bold; font-size: 14px;">
                   ${totalQuantity}
                 </td>
-                <td style="border: 1px solid #000; padding: 3px; text-align: center; font-weight: bold; font-size: 14px; color: ${
-                  lowStockCount > 0 ? "red" : "green"
-                };">
+                <td style="border: 1px solid #000; padding: 3px; text-align: center; font-weight: bold; font-size: 14px; color: ${lowStockCount > 0 ? "red" : "green"
+      };">
                   ${lowStockCount > 0 ? `${lowStockCount} LOW` : "ALL OK"}
                 </td>
               </tr>
@@ -667,11 +658,10 @@ const StockOverview = ({
                         {codeSuggestions.map((stock, index) => (
                           <div
                             key={stock.id}
-                            className={`p-2 cursor-pointer ${
-                              index === selectedCodeIndex
-                                ? "bg-blue-100"
-                                : "hover:bg-gray-100"
-                            }`}
+                            className={`p-2 cursor-pointer ${index === selectedCodeIndex
+                              ? "bg-blue-100"
+                              : "hover:bg-gray-100"
+                              }`}
                             onClick={() => handleCodeSelect(stock)}
                           >
                             <div className="font-medium">{stock.code}</div>
@@ -718,20 +708,22 @@ const StockOverview = ({
                   <select
                     id="stock-length"
                     title="Select stock length"
-                    className={`w-full border rounded-md py-2 px-3 ${
-                      existingStock ? "bg-gray-100" : ""
-                    }`}
+                    className={`w-full border rounded-md py-2 px-3 ${existingStock ? "bg-gray-100" : ""
+                      }`}
                     value={newStock.length}
                     onChange={(e) =>
                       setNewStock((prev) => ({
                         ...prev,
-                        length: e.target.value as "16ft" | "12ft",
+                        length: e.target.value as stockLength,
                       }))
                     }
                     disabled={!!existingStock}
                   >
-                    <option value="16ft">16ft</option>
-                    <option value="12ft">12ft</option>
+                    {stockLengthOptions.map((length) => (
+                      <option key={length} value={length}>
+                        {length}
+                      </option>
+                    ))}
                   </select>
                 </div>
 
@@ -882,12 +874,15 @@ const StockOverview = ({
                     onChange={(e) =>
                       setNewStock((prev) => ({
                         ...prev,
-                        length: e.target.value as "16ft" | "12ft",
+                        length: e.target.value as stockLength,
                       }))
                     }
                   >
-                    <option value="16ft">16ft</option>
-                    <option value="12ft">12ft</option>
+                    {stockLengthOptions.map((length) => (
+                      <option key={length} value={length}>
+                        {length}
+                      </option>
+                    ))}
                   </select>
                 </div>
 
@@ -1027,9 +1022,8 @@ const StockOverview = ({
                     Quantity:
                   </span>
                   <span
-                    className={`font-bold text-sm lg:text-base ${
-                      stock.quantity < 50 ? "text-red-600" : "text-green-600"
-                    }`}
+                    className={`font-bold text-sm lg:text-base ${stock.quantity < 50 ? "text-red-600" : "text-green-600"
+                      }`}
                   >
                     {stock.quantity}
                   </span>
@@ -1087,11 +1081,10 @@ const StockOverview = ({
                       <div>
                         <span className="text-gray-600">Change:</span>
                         <span
-                          className={`ml-1 font-medium ${
-                            entry.quantity_change > 0
-                              ? "text-green-600"
-                              : "text-red-600"
-                          }`}
+                          className={`ml-1 font-medium ${entry.quantity_change > 0
+                            ? "text-green-600"
+                            : "text-red-600"
+                            }`}
                         >
                           {entry.quantity_change > 0 ? "+" : ""}
                           {entry.quantity_change}
