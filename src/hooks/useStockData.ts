@@ -42,6 +42,7 @@ export interface OrderItem {
   stock_code?: string;
   stock_length?: string;
   is_from_stock_table?: boolean;
+  rate_type?: "per_pc" | "per_kg";
 }
 
 export interface Order {
@@ -120,8 +121,10 @@ export const useStockData = () => {
             stock_name,
             stock_code,
             stock_length,
-            is_from_stock_table
-          )
+            is_from_stock_table,
+            rate_type
+          ),
+          order_additional_costs(*)
         `);
 
       if (!includeHidden) {
@@ -141,12 +144,32 @@ export const useStockData = () => {
       if (ordersError) throw ordersError;
 
       const formattedOrders: Order[] =
-        ordersData?.map((order: any) => ({
+        ordersData?.map((order: {
+          id: string;
+          customer_id: string;
+          order_date: string;
+          color_code?: string;
+          vehicle_number?: string;
+          agent_name?: string;
+          gst_enabled?: boolean;
+          gst_type?: "CGST_SGST" | "IGST" | "UTGST";
+          gst_percentage?: number;
+          gst_amount?: number;
+          total_amount?: number;
+          raw_total?: number;
+          subtotal?: number;
+          rounding_adjustment?: number;
+          show_unit_price?: boolean;
+          is_hidden?: boolean;
+          customers?: { name?: string; address?: string; gstin_number?: string };
+          order_items?: (OrderItem & { stocks?: { name?: string; code?: string; length?: string } })[];
+          order_additional_costs?: OrderAdditionalCost[];
+        }) => ({
           ...order,
           customer_name: order.customers?.name,
           customer_address: order.customers?.address,
           customer_gstin: order.customers?.gstin_number,
-          order_items: order.order_items?.map((item: any) => ({
+          order_items: order.order_items?.map((item) => ({
             ...item,
             stock_name: item.stock_name || item.stocks?.name,
             stock_code: item.stock_code || item.stocks?.code,
@@ -245,7 +268,8 @@ export const useStockData = () => {
     showUnitPrice: boolean = true,
     additionalCosts?: Omit<OrderAdditionalCost, "id" | "order_id">[],
     customerAddress?: string,
-    customerGstin?: string
+    customerGstin?: string,
+    orderDate?: string
   ) => {
     try {
       // Create the order
@@ -259,7 +283,8 @@ export const useStockData = () => {
           gst_enabled: gstEnabled,
           gst_type: gstType,
           gst_percentage: gstPercentage,
-          show_unit_price: showUnitPrice
+          show_unit_price: showUnitPrice,
+          ...(orderDate ? { order_date: orderDate } : {}),
         }])
         .select()
         .single();
@@ -268,7 +293,7 @@ export const useStockData = () => {
 
       // Update customer address and GSTIN if provided
       if (customerAddress || customerGstin) {
-        const updateData: any = {};
+        const updateData: { address?: string; gstin_number?: string } = {};
         if (customerAddress) updateData.address = customerAddress;
         if (customerGstin) updateData.gstin_number = customerGstin;
 
@@ -290,7 +315,8 @@ export const useStockData = () => {
         stock_name: item.stock_name,
         stock_code: item.stock_code,
         stock_length: item.stock_length,
-        is_from_stock_table: item.is_from_stock_table
+        is_from_stock_table: item.is_from_stock_table,
+        rate_type: item.rate_type ?? "per_kg",
       }));
 
       const { error: itemsError } = await supabase
@@ -336,7 +362,7 @@ export const useStockData = () => {
 
         const newQuantity = stockData.quantity - item.pieces_used;
 
-        const updateData: any = { quantity: newQuantity };
+        const updateData: { quantity: number; weight?: number } = { quantity: newQuantity };
         if (item.weight) {
           updateData.weight = item.weight;
         }
@@ -509,7 +535,7 @@ export const useStockData = () => {
 
       // Update customer address and GSTIN if provided
       if (customerAddress || customerGstin) {
-        const updateData: any = {};
+        const updateData: { address?: string; gstin_number?: string } = {};
         if (customerAddress) updateData.address = customerAddress;
         if (customerGstin) updateData.gstin_number = customerGstin;
 
@@ -539,7 +565,8 @@ export const useStockData = () => {
         stock_name: item.stock_name,
         stock_code: item.stock_code,
         stock_length: item.stock_length,
-        is_from_stock_table: item.is_from_stock_table
+        is_from_stock_table: item.is_from_stock_table,
+        rate_type: item.rate_type ?? "per_kg",
       }));
 
       const { error: itemsError } = await supabase
@@ -593,7 +620,7 @@ export const useStockData = () => {
 
         const newQuantity = stockData.quantity - item.pieces_used;
 
-        const updateData: any = { quantity: newQuantity };
+        const updateData: { quantity: number; weight?: number } = { quantity: newQuantity };
         if (item.weight) {
           updateData.weight = item.weight;
         }

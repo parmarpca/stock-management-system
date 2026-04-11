@@ -65,8 +65,8 @@ interface StockOverviewProps {
     length: stockLength;
     quantity: number;
     weight?: number;
-  }) => Promise<any>;
-  onStockDelete: (stockId: string) => Promise<any>;
+  }) => Promise<Stock>;
+  onStockDelete: (stockId: string) => Promise<void>;
   onRefresh: () => Promise<void>;
 }
 

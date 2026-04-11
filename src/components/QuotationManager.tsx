@@ -137,6 +137,7 @@ const QuotationManager = ({
   const [pieces, setPieces] = useState(0);
   const [pricePerPiece, setPricePerPiece] = useState(0);
   const [itemWeight, setItemWeight] = useState<number | undefined>(undefined);
+  const [rateType, setRateType] = useState<"per_kg" | "per_pc">("per_kg");
   const [showStockSuggestions, setShowStockSuggestions] = useState(false);
   const [selectedStockIndex, setSelectedStockIndex] = useState(-1);
 
@@ -294,6 +295,61 @@ const QuotationManager = ({
     }
   };
 
+  // const handleStockSelect = (stock: Stock) => {
+  //   setSelectedStock(stock);
+  //   setStockSearch(`${stock.name} (${stock.code}) - ${stock.length}`);
+  //   setShowStockSuggestions(false);
+  //   setSelectedStockIndex(-1);
+  //   setIsManualItem(false);
+  //   setItemWeight(stock.weight);
+
+  //   // Focus on pieces input after stock selection
+  //   setTimeout(() => {
+  //     const piecesInput = document.getElementById("pieces-input");
+  //     if (piecesInput) piecesInput.focus();
+  //   }, 100);
+  // };
+
+  const addItemToQuotation = () => {
+    const stockName = isManualItem ? manualStockName : selectedStock?.name;
+    const stockCode = isManualItem ? manualStockCode : selectedStock?.code;
+    const length = isManualItem ? manualLength : selectedStock?.length;
+
+    if (!stockName || !stockCode || pieces <= 0 || pricePerPiece <= 0) {
+      alert("Please fill all item fields");
+      return;
+    }
+
+    const newItem: QuotationItemForm = {
+      stock_name: stockName,
+      stock_code: stockCode,
+      length: length as stockLength,
+      pieces,
+      price_per_piece: pricePerPiece,
+      is_from_stock_table: !isManualItem,
+      rate_type: rateType,
+      stock_id: selectedStock?.id,
+      weight: itemWeight,
+    };
+
+    setQuotationItems([...quotationItems, newItem]);
+
+    // Reset item inputs
+    setStockSearch("");
+    setSelectedStock(null);
+    setPieces(0);
+    setPricePerPiece(0);
+    setItemWeight(undefined);
+    setRateType("per_kg");
+    setIsManualItem(false);
+    setManualStockName("");
+    setManualStockCode("");
+
+    // Focus back to stock search or manual toggle
+    const searchInput = document.getElementById("stock-search-input");
+    if (searchInput) searchInput.focus();
+  };
+
   const handleStockSelect = (stock: Stock) => {
     setSelectedStock(stock);
     setStockSearch(`${stock.name} (${stock.code}) - ${stock.length}`);
@@ -306,67 +362,6 @@ const QuotationManager = ({
     setTimeout(() => {
       const piecesInput = document.getElementById("pieces-input");
       if (piecesInput) piecesInput.focus();
-    }, 100);
-  };
-
-  const addItemToQuotation = () => {
-    if (isManualItem) {
-      if (
-        !manualStockName ||
-        !manualStockCode ||
-        pieces <= 0 ||
-        pricePerPiece <= 0
-      ) {
-        alert("Please fill all manual item fields");
-        return;
-      }
-
-      const newItem: QuotationItemForm = {
-        stock_name: manualStockName,
-        stock_code: manualStockCode,
-        length: manualLength,
-        pieces,
-        price_per_piece: pricePerPiece,
-        is_from_stock_table: false,
-        weight: itemWeight,
-      };
-
-      setQuotationItems([...quotationItems, newItem]);
-    } else {
-      if (!selectedStock || pieces <= 0 || pricePerPiece <= 0) {
-        alert("Please select stock and enter valid quantities");
-        return;
-      }
-
-      const newItem: QuotationItemForm = {
-        stock_name: selectedStock.name,
-        stock_code: selectedStock.code,
-        length: selectedStock.length,
-        pieces,
-        price_per_piece: pricePerPiece,
-        is_from_stock_table: true,
-        stock_id: selectedStock.id,
-        weight: itemWeight || selectedStock.weight,
-      };
-
-      setQuotationItems([...quotationItems, newItem]);
-    }
-
-    // Reset form and focus back to stock search
-    setStockSearch("");
-    setSelectedStock(null);
-    setPieces(0);
-    setPricePerPiece(0);
-    setItemWeight(undefined);
-    setManualStockName("");
-    setManualStockCode("");
-    setManualLength("16ft");
-    setIsManualItem(false);
-
-    // Focus back to stock search input
-    setTimeout(() => {
-      const stockInput = document.getElementById("stock-search-input");
-      if (stockInput) stockInput.focus();
     }, 100);
   };
 
@@ -448,12 +443,11 @@ const QuotationManager = ({
     const subtotal = quotationItems.reduce((sum, item) => {
       const itemWeight = item.weight || 0;
       const totalWeight = itemWeight * item.pieces;
-      return (
-        sum +
-        (itemWeight
+      const itemAmount =
+        item.rate_type === "per_kg" && itemWeight > 0
           ? totalWeight * item.price_per_piece
-          : item.pieces * item.price_per_piece)
-      );
+          : item.pieces * item.price_per_piece;
+      return sum + itemAmount;
     }, 0);
 
     const additionalTotal = additionalCosts.reduce(
@@ -558,6 +552,7 @@ const QuotationManager = ({
         pieces: item.pieces,
         price_per_piece: item.price_per_piece,
         is_from_stock_table: item.is_from_stock_table,
+        rate_type: item.rate_type,
         stock_id: item.stock_id,
         weight: item.weight,
       })) || []
@@ -675,13 +670,11 @@ const QuotationManager = ({
           <thead>
             <tr style="border: 1px solid #000;">
               <th style="border: 1px solid #000; padding: 4px; text-align: center; font-size: 10px; width: 5%; font-weight: bold;">Sr.</th>
-              <th style="border: 1px solid #000; padding: 4px; text-align: left; font-size: 10px; width: ${showPrices ? "20%" : "25%"
-      }; font-weight: bold;">Item Name</th>
-              <th style="border: 1px solid #000; padding: 4px; text-align: left; font-size: 10px; width: ${showPrices ? "10%" : "15%"
-      }; font-weight: bold;">Code</th>
+              <th style="border: 1px solid #000; padding: 4px; text-align: left; font-size: 10px; width: ${showPrices ? "20%" : "25%"}; font-weight: bold;">Item Name</th>
+              <th style="border: 1px solid #000; padding: 4px; text-align: left; font-size: 10px; width: ${showPrices ? "10%" : "15%"}; font-weight: bold;">Code</th>
               <th style="border: 1px solid #000; padding: 4px; text-align: center; font-size: 10px; width: 8%; font-weight: bold;">Length</th>
-              <th style="border: 1px solid #000; padding: 4px; text-align: center; font-size: 10px; width: 8%; font-weight: bold;">Wt.(kg)</th>
               <th style="border: 1px solid #000; padding: 4px; text-align: center; font-size: 10px; width: 6%; font-weight: bold;">Pcs</th>
+              <th style="border: 1px solid #000; padding: 4px; text-align: center; font-size: 10px; width: 8%; font-weight: bold;">Wt.(kg)</th>
               <th style="border: 1px solid #000; padding: 4px; text-align: center; font-size: 10px; width: 10%; font-weight: bold;">Net Wt.(kg)</th>
               ${showPrices
         ? `
@@ -697,9 +690,10 @@ const QuotationManager = ({
         ?.map((item, index) => {
           const itemWeight = item.weight || 0;
           const netWeight = itemWeight * item.pieces;
-          const itemTotal = itemWeight
-            ? netWeight * item.price_per_piece
-            : item.pieces * item.price_per_piece;
+          const itemTotal =
+            item.rate_type === "per_kg" && itemWeight > 0
+              ? netWeight * item.price_per_piece
+              : item.pieces * item.price_per_piece;
 
           return `
                 <tr>
@@ -711,9 +705,9 @@ const QuotationManager = ({
             }</td>
                   <td style="border: 1px solid #000; padding: 3px; text-align: center; font-size: 10px;">${item.length
             }</td>
-                  <td style="border: 1px solid #000; padding: 3px; text-align: center; font-size: 10px;">${itemWeight ? itemWeight.toFixed(2) : "-"
-            }</td>
                   <td style="border: 1px solid #000; padding: 3px; text-align: center; font-size: 10px;">${item.pieces
+            }</td>
+                  <td style="border: 1px solid #000; padding: 3px; text-align: center; font-size: 10px;">${itemWeight ? itemWeight.toFixed(2) : "-"
             }</td>
                   <td style="border: 1px solid #000; padding: 3px; text-align: center; font-size: 10px;">${netWeight > 0 ? netWeight.toFixed(2) : "-"
             }</td>
@@ -721,7 +715,7 @@ const QuotationManager = ({
               ? `
                     <td style="border: 1px solid #000; padding: 3px; text-align: right; font-size: 10px;">₹${item.price_per_piece.toFixed(
                 2
-              )}${itemWeight ? "/kg" : "/pc"}</td>
+              )}${item.rate_type === "per_kg" ? "/kg" : "/pc"}</td>
                     <td style="border: 1px solid #000; padding: 3px; text-align: right; font-size: 10px;">₹${itemTotal.toFixed(
                 2
               )}</td>
@@ -1233,7 +1227,7 @@ const QuotationManager = ({
                       </div>
                     )}
 
-                    <div className="grid grid-cols-4 gap-4">
+                    <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
                       <div>
                         <Label>Pieces</Label>
                         <Input
@@ -1258,7 +1252,7 @@ const QuotationManager = ({
                           placeholder={
                             selectedStock?.weight
                               ? `${selectedStock.weight} (from stock)`
-                              : "Enter weight (will update stock)"
+                              : "Enter weight"
                           }
                           min="0"
                           disabled={
@@ -1268,16 +1262,30 @@ const QuotationManager = ({
                             !isManualItem
                           }
                         />
-                        {selectedStock &&
-                          !selectedStock.weight &&
-                          !isManualItem && (
-                            <p className="text-xs text-blue-600 mt-1">
-                              Weight will be saved to stock item
-                            </p>
-                          )}
                       </div>
                       <div>
-                        <Label>Price per Piece (₹)</Label>
+                        <Label>Rate Type</Label>
+                        <Select
+                          value={rateType}
+                          onValueChange={(value: "per_kg" | "per_pc") =>
+                            setRateType(value)
+                          }
+                        >
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="per_kg">Per Kg</SelectItem>
+                            <SelectItem value="per_pc">Per Piece</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div>
+                        <Label>
+                          {rateType === "per_kg"
+                            ? "Rate per Kg (₹)"
+                            : "Price per Piece (₹)"}
+                        </Label>
                         <Input
                           type="number"
                           step="0.01"
@@ -1291,7 +1299,7 @@ const QuotationManager = ({
                           onKeyDown={(e) => handleItemKeyDown(e, "price")}
                         />
                       </div>
-                      <div className="flex items-end">
+                      <div className="flex items-end col-span-2 md:col-span-1">
                         <Button onClick={addItemToQuotation} className="w-full">
                           <Plus className="h-4 w-4 mr-2" />
                           Add Item
@@ -1312,9 +1320,10 @@ const QuotationManager = ({
                         {quotationItems.map((item, index) => {
                           const itemWeight = item.weight || 0;
                           const totalWeight = itemWeight * item.pieces;
-                          const itemTotal = itemWeight
-                            ? totalWeight * item.price_per_piece
-                            : item.pieces * item.price_per_piece;
+                          const itemTotal =
+                            item.rate_type === "per_kg" && itemWeight > 0
+                              ? totalWeight * item.price_per_piece
+                              : item.pieces * item.price_per_piece;
 
                           return (
                             <div
@@ -1327,7 +1336,7 @@ const QuotationManager = ({
                                 </div>
                                 <div className="text-sm text-gray-500">
                                   {item.length} - {item.pieces} pieces
-                                  {itemWeight > 0 && (
+                                  {item.rate_type === "per_kg" && itemWeight > 0 ? (
                                     <>
                                       <span className="mx-1">-</span>
                                       <span className="font-medium">
@@ -1337,8 +1346,7 @@ const QuotationManager = ({
                                       <span className="mx-1">×</span>
                                       <span>₹{item.price_per_piece}/kg</span>
                                     </>
-                                  )}
-                                  {!itemWeight && (
+                                  ) : (
                                     <>
                                       <span className="mx-1">×</span>
                                       <span>₹{item.price_per_piece}/piece</span>

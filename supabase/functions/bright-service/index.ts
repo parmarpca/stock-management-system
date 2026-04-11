@@ -84,7 +84,7 @@ serve(async (req) => {
           }
         );
 
-      case "list":
+      case "list": {
         // List all users
         const { data: users, error } =
           await supabaseAdmin.auth.admin.listUsers();
@@ -109,8 +109,9 @@ serve(async (req) => {
         return new Response(JSON.stringify({ users: formattedUsers }), {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
+      }
 
-      case "create":
+      case "create": {
         const { email, password, role } = body;
 
         if (!email || !password) {
@@ -142,8 +143,9 @@ serve(async (req) => {
         return new Response(JSON.stringify({ user: createData.user }), {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
+      }
 
-      case "delete":
+      case "delete": {
         const { userId } = body;
 
         if (!userId) {
@@ -181,6 +183,7 @@ serve(async (req) => {
         return new Response(JSON.stringify({ success: true }), {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
+      }
 
       default:
         // Handle other actions or return default response

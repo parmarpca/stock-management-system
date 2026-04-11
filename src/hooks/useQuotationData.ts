@@ -12,6 +12,7 @@ export interface QuotationItem {
   price_per_piece: number;
   subtotal: number;
   is_from_stock_table: boolean;
+  rate_type: "per_kg" | "per_pc";
   stock_id?: string;
   weight?: number; // Weight in kg
 }
@@ -54,6 +55,7 @@ export interface QuotationItemForm {
   pieces: number;
   price_per_piece: number;
   is_from_stock_table: boolean;
+  rate_type: "per_kg" | "per_pc";
   stock_id?: string;
   weight?: number; // Weight in kg
 }
@@ -99,32 +101,30 @@ export const useQuotationData = () => {
     customerName: string,
     customerAddress?: string,
     customerGstin?: string
-  ): Promise<{ id: string; address?: string; gstin_number?: string }> => {
+  ): Promise<{ id: string; address?: string; gstin_number?: string; mobile_number?: string | null }> => {
     try {
       // First, try to find existing customer (cast to any for now until migrations are applied)
-      const { data: existingCustomers, error: searchError } = await (
-        supabase as any
-      )
+      const { data: existingCustomers, error: searchError } = await supabase
+
         .from("customers")
-        .select("id, name, address, gstin_number")
+        .select("id, name, address, gstin_number, mobile_number")
         .ilike("name", customerName.trim());
 
       if (searchError) throw searchError;
 
-      let customer: any;
+      let customer: { id: string; address?: string; gstin_number?: string; mobile_number?: string | null };
       // If customer exists, update their details if provided
       if (existingCustomers && existingCustomers.length > 0) {
         customer = existingCustomers[0];
 
         // Update customer details if new information is provided
         if (customerAddress || customerGstin) {
-          const updateData: any = {};
+          const updateData: { address?: string; gstin_number?: string } = {};
           if (customerAddress) updateData.address = customerAddress;
           if (customerGstin) updateData.gstin_number = customerGstin;
 
-          const { data: updatedCustomer, error: updateError } = await (
-            supabase as any
-          )
+          const { data: updatedCustomer, error: updateError } = await supabase
+
             .from("customers")
             .update(updateData)
             .eq("id", customer.id)
@@ -134,28 +134,32 @@ export const useQuotationData = () => {
           if (updateError) throw updateError;
           customer = {
             id: customer.id,
-            address: updatedCustomer?.address,
-            gstin_number: updatedCustomer?.gstin_number,
+            address: updatedCustomer?.address ?? undefined,
+            gstin_number: updatedCustomer?.gstin_number ?? undefined,
             mobile_number: updatedCustomer?.mobile_number,
           };
         }
       } else {
         // Create new customer
-        const insertData: any = { name: customerName.trim() };
+        const insertData: { name: string; address?: string; gstin_number?: string } = { name: customerName.trim() };
         if (customerAddress) insertData.address = customerAddress;
         if (customerGstin) insertData.gstin_number = customerGstin;
         // Optionally pass mobileNumber if an argument exists for it, here we assume it's omitted in Quotation create unless we update the params, but the interface holds it at least.
 
-        const { data: newCustomer, error: createError } = await (
-          supabase as any
-        )
+        const { data: newCustomer, error: createError } = await supabase
+
           .from("customers")
           .insert([insertData])
           .select("id, address, gstin_number, mobile_number")
           .single();
 
         if (createError) throw createError;
-        customer = newCustomer;
+        customer = {
+          id: newCustomer.id,
+          address: newCustomer.address ?? undefined,
+          gstin_number: newCustomer.gstin_number ?? undefined,
+          mobile_number: newCustomer.mobile_number
+        };
       }
 
       // Refresh customers list
@@ -172,7 +176,7 @@ export const useQuotationData = () => {
     showTodayOnly: boolean = true
   ): Promise<void> => {
     try {
-      let query = (supabase as any).from("quotations").select(`
+      let query = supabase.from("quotations").select(`
           *,
           quotation_items(*),
           quotation_additional_costs(*)
@@ -199,7 +203,7 @@ export const useQuotationData = () => {
     weight: number
   ): Promise<void> => {
     try {
-      const { error } = await (supabase as any)
+      const { error } = await supabase
         .from("stocks")
         .update({ weight })
         .eq("id", stockId);
@@ -232,7 +236,7 @@ export const useQuotationData = () => {
       );
 
       // Create the quotation
-      const { data: quotation, error: quotationError } = await (supabase as any)
+      const { data: quotation, error: quotationError } = await supabase
         .from("quotations")
         .insert([
           {
@@ -261,11 +265,12 @@ export const useQuotationData = () => {
           pieces: item.pieces,
           price_per_piece: item.price_per_piece,
           is_from_stock_table: item.is_from_stock_table,
+          rate_type: item.rate_type,
           stock_id: item.stock_id,
           weight: item.weight,
         }));
 
-        const { error: itemsError } = await (supabase as any)
+        const { error: itemsError } = await supabase
           .from("quotation_items")
           .insert(quotationItems);
 
@@ -288,7 +293,7 @@ export const useQuotationData = () => {
           amount: cost.amount,
         }));
 
-        const { error: costsError } = await (supabase as any)
+        const { error: costsError } = await supabase
           .from("quotation_additional_costs")
           .insert(additionalCostsData);
 
@@ -296,7 +301,7 @@ export const useQuotationData = () => {
       }
 
       // Calculate totals using the database function
-      const { error: calcError } = await (supabase as any).rpc(
+      const { error: calcError } = await supabase.rpc(
         "update_quotation_totals",
         {
           quotation_uuid: quotation.id,
@@ -331,7 +336,7 @@ export const useQuotationData = () => {
       await findOrCreateCustomer(customerName, customerAddress, customerGstin);
 
       // Update the quotation
-      const { error: quotationError } = await (supabase as any)
+      const { error: quotationError } = await supabase
         .from("quotations")
         .update({
           customer_name: customerName.trim(),
@@ -348,12 +353,12 @@ export const useQuotationData = () => {
       if (quotationError) throw quotationError;
 
       // Delete existing items and additional costs
-      await (supabase as any)
+      await supabase
         .from("quotation_items")
         .delete()
         .eq("quotation_id", quotationId);
 
-      await (supabase as any)
+      await supabase
         .from("quotation_additional_costs")
         .delete()
         .eq("quotation_id", quotationId);
@@ -368,11 +373,12 @@ export const useQuotationData = () => {
           pieces: item.pieces,
           price_per_piece: item.price_per_piece,
           is_from_stock_table: item.is_from_stock_table,
+          rate_type: item.rate_type,
           stock_id: item.stock_id,
           weight: item.weight,
         }));
 
-        const { error: itemsError } = await (supabase as any)
+        const { error: itemsError } = await supabase
           .from("quotation_items")
           .insert(quotationItems);
 
@@ -395,7 +401,7 @@ export const useQuotationData = () => {
           amount: cost.amount,
         }));
 
-        const { error: costsError } = await (supabase as any)
+        const { error: costsError } = await supabase
           .from("quotation_additional_costs")
           .insert(additionalCostsData);
 
@@ -403,7 +409,7 @@ export const useQuotationData = () => {
       }
 
       // Calculate totals using the database function
-      const { error: calcError } = await (supabase as any).rpc(
+      const { error: calcError } = await supabase.rpc(
         "update_quotation_totals",
         {
           quotation_uuid: quotationId,
@@ -421,7 +427,7 @@ export const useQuotationData = () => {
 
   const deleteQuotation = async (quotationId: string): Promise<void> => {
     try {
-      const { error } = await (supabase as any)
+      const { error } = await supabase
         .from("quotations")
         .delete()
         .eq("id", quotationId);

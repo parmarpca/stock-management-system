@@ -226,6 +226,7 @@ export type Database = {
           stock_code: string | null;
           stock_length: string | null;
           is_from_stock_table: boolean;
+          rate_type: "per_kg" | "per_pc";
           created_at: string;
         };
         Insert: {
@@ -240,6 +241,7 @@ export type Database = {
           stock_code?: string | null;
           stock_length?: string | null;
           is_from_stock_table?: boolean;
+          rate_type?: "per_kg" | "per_pc";
           created_at?: string;
         };
         Update: {
@@ -254,6 +256,7 @@ export type Database = {
           stock_code?: string | null;
           stock_length?: string | null;
           is_from_stock_table?: boolean;
+          rate_type?: "per_kg" | "per_pc";
           created_at?: string;
         };
         Relationships: [
@@ -316,6 +319,167 @@ export type Database = {
             columns: ["stock_id"];
             isOneToOne: false;
             referencedRelation: "stocks";
+            referencedColumns: ["id"];
+          }
+        ];
+      };
+      quotations: {
+        Row: {
+          id: string;
+          quotation_number: number;
+          customer_name: string;
+          quotation_date: string;
+          subtotal: number;
+          additional_costs_total: number;
+          gst_enabled: boolean;
+          gst_type: "CGST_SGST" | "IGST" | "UTGST" | null;
+          gst_percentage: number;
+          gst_amount: number;
+          total_amount: number;
+          show_unit_price: boolean;
+          customer_address: string | null;
+          customer_gstin: string | null;
+          raw_total: number;
+          rounding_adjustment: number;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          quotation_number?: number;
+          customer_name: string;
+          quotation_date?: string;
+          subtotal?: number;
+          additional_costs_total?: number;
+          gst_enabled?: boolean;
+          gst_type?: "CGST_SGST" | "IGST" | "UTGST" | null;
+          gst_percentage?: number;
+          gst_amount?: number;
+          total_amount?: number;
+          show_unit_price?: boolean;
+          customer_address?: string | null;
+          customer_gstin?: string | null;
+          raw_total?: number;
+          rounding_adjustment?: number;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          quotation_number?: number;
+          customer_name?: string;
+          quotation_date?: string;
+          subtotal?: number;
+          additional_costs_total?: number;
+          gst_enabled?: boolean;
+          gst_type?: "CGST_SGST" | "IGST" | "UTGST" | null;
+          gst_percentage?: number;
+          gst_amount?: number;
+          total_amount?: number;
+          show_unit_price?: boolean;
+          customer_address?: string | null;
+          customer_gstin?: string | null;
+          raw_total?: number;
+          rounding_adjustment?: number;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      quotation_items: {
+        Row: {
+          id: string;
+          quotation_id: string;
+          stock_name: string;
+          stock_code: string;
+          length: string;
+          pieces: number;
+          price_per_piece: number;
+          subtotal: number;
+          is_from_stock_table: boolean;
+          rate_type: "per_kg" | "per_pc";
+          stock_id: string | null;
+          weight: number | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          quotation_id: string;
+          stock_name: string;
+          stock_code: string;
+          length: string;
+          pieces: number;
+          price_per_piece: number;
+          subtotal?: number;
+          is_from_stock_table?: boolean;
+          rate_type?: "per_kg" | "per_pc";
+          stock_id?: string | null;
+          weight?: number | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          quotation_id?: string;
+          stock_name?: string;
+          stock_code?: string;
+          length?: string;
+          pieces?: number;
+          price_per_piece?: number;
+          subtotal?: number;
+          is_from_stock_table?: boolean;
+          rate_type?: "per_kg" | "per_pc";
+          stock_id?: string | null;
+          weight?: number | null;
+          created_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "quotation_items_quotation_id_fkey";
+            columns: ["quotation_id"];
+            isOneToOne: false;
+            referencedRelation: "quotations";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "quotation_items_stock_id_fkey";
+            columns: ["stock_id"];
+            isOneToOne: false;
+            referencedRelation: "stocks";
+            referencedColumns: ["id"];
+          }
+        ];
+      };
+      quotation_additional_costs: {
+        Row: {
+          id: string;
+          quotation_id: string;
+          label: string;
+          type: "add" | "discount";
+          amount: number;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          quotation_id: string;
+          label: string;
+          type: "add" | "discount";
+          amount: number;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          quotation_id?: string;
+          label?: string;
+          type?: "add" | "discount";
+          amount?: number;
+          created_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "quotation_additional_costs_quotation_id_fkey";
+            columns: ["quotation_id"];
+            isOneToOne: false;
+            referencedRelation: "quotations";
             referencedColumns: ["id"];
           }
         ];

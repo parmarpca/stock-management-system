@@ -69,7 +69,7 @@ export const userService = {
     email: string,
     password: string,
     role: "admin" | "user" = "user"
-  ): Promise<any> {
+  ): Promise<UserData | undefined> {
     try {
       const { data, error } = await supabase.functions.invoke(
         "bright-service",

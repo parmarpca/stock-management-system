@@ -29,7 +29,15 @@ interface OrderFormProps {
   stocks: Stock[];
   customers: Customer[];
   setCustomers: React.Dispatch<React.SetStateAction<Customer[]>>;
-  onOrderCreate: (orderData: any) => void;
+  onOrderCreate: (orderData: {
+    customer_id: string;
+    stock_id: string;
+    length: stockLength;
+    pieces_used: number;
+    date: string;
+    customer_name: string;
+    stock_name: string;
+  }) => void;
 }
 
 const OrderForm = ({ stocks, customers, setCustomers, onOrderCreate }: OrderFormProps) => {
