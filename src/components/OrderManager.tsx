@@ -36,6 +36,7 @@ import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { SuccessDialog } from "@/components/ui/success-dialog";
 import { Stock, Customer, Order, OrderItem, OrderAdditionalCost } from "@/hooks/useStockData";
+import { useCompanySettings } from "@/hooks/useCompanySettings";
 import { cn } from "@/lib/utils";
 
 interface OrderManagerProps {
@@ -110,6 +111,8 @@ const OrderManager = ({
   filterCustomer,
   setFilterCustomer,
 }: OrderManagerProps) => {
+  const { companySettings } = useCompanySettings();
+
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isCreatingOrder, setIsCreatingOrder] = useState(false);
@@ -929,7 +932,10 @@ const OrderManager = ({
       </style></head><body>
       <div style="max-width:800px;margin:0 auto;padding:15px;">
         <div style="text-align:center;margin-bottom:20px;border-bottom:1px solid #000;padding-bottom:10px;">
-          <h1 style="margin:0;font-size:20px;font-weight:bold;">ORDER INVOICE</h1>
+          ${companySettings ? `<h1 style="margin:0;font-size:24px;font-weight:bold;">${companySettings.company_name}</h1>
+          <p style="margin:2px 0;font-size:11px;">${companySettings.company_address}</p>
+          <p style="margin:2px 0;font-size:11px;">GSTIN: ${companySettings.company_gstin}</p>` : ""}
+          <h2 style="margin:10px 0 0;font-size:18px;font-weight:bold;text-decoration:underline;">ORDER INVOICE</h2>
         </div>
         <div style="display:flex;justify-content:space-between;margin-bottom:15px;">
           <div style="width:48%;">
