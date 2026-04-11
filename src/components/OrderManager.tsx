@@ -158,6 +158,11 @@ const OrderManager = ({
   const [customerGstin, setCustomerGstin] = useState("");
   const [additionalCosts, setAdditionalCosts] = useState<Omit<OrderAdditionalCost, "id" | "order_id">[]>([]);
 
+  // Inline validation errors
+  const [customerNameError, setCustomerNameError] = useState("");
+  const [mobileError, setMobileError] = useState("");
+  const [gstinError, setGstinError] = useState("");
+
   //   const [filterCustomer, setFilterCustomer] = useState("");
   const [filterDateFrom, setFilterDateFrom] = useState("");
   const [filterDateTo, setFilterDateTo] = useState("");
@@ -226,6 +231,11 @@ const OrderManager = ({
     setSelectedCustomer(customer);
     setShowCustomerSuggestions(false);
     setSelectedCustomerIndex(-1);
+    setCustomerNameError("");
+    // Pre-fill mobile and address from the customer record if they exist
+    if (customer.mobile_number) setMobileNumber(customer.mobile_number);
+    if (customer.address) setCustomerAddress(customer.address);
+    if (customer.gstin_number) setCustomerGstin(customer.gstin_number);
   };
 
   // Handle keyboard navigation for customer suggestions
@@ -240,13 +250,12 @@ const OrderManager = ({
       return;
     }
 
+    const visibleCustomerCount = Math.min(filteredCustomers.length, 5);
     switch (e.key) {
       case "ArrowDown":
         e.preventDefault();
         setSelectedCustomerIndex((prev) => {
-          const newIndex =
-            prev < filteredCustomers.length - 1 ? prev + 1 : prev;
-          // Scroll to selected item
+          const newIndex = prev < visibleCustomerCount - 1 ? prev + 1 : prev;
           setTimeout(() => {
             const selectedElement = document.querySelector(
               `[data-customer-index="${newIndex}"]`
@@ -262,7 +271,6 @@ const OrderManager = ({
         e.preventDefault();
         setSelectedCustomerIndex((prev) => {
           const newIndex = prev > 0 ? prev - 1 : -1;
-          // Scroll to selected item
           setTimeout(() => {
             const selectedElement = document.querySelector(
               `[data-customer-index="${newIndex}"]`
@@ -278,10 +286,9 @@ const OrderManager = ({
         e.preventDefault();
         if (selectedCustomerIndex >= 0) {
           handleCustomerSelect(filteredCustomers[selectedCustomerIndex]);
-        } else if (filteredCustomers.length > 0) {
+        } else if (visibleCustomerCount > 0) {
           handleCustomerSelect(filteredCustomers[0]);
         }
-        // Move to next field after selection
         setTimeout(() => {
           const colorCodeInput = document.getElementById("color-code");
           if (colorCodeInput) colorCodeInput.focus();
@@ -307,12 +314,12 @@ const OrderManager = ({
   const handleStockKeyDown = (e: React.KeyboardEvent) => {
     if (!showStockSuggestions || filteredStocks.length === 0) return;
 
+    const visibleStockCount = Math.min(filteredStocks.length, 5);
     switch (e.key) {
       case "ArrowDown":
         e.preventDefault();
         setSelectedStockIndex((prev) => {
-          const newIndex = prev < filteredStocks.length - 1 ? prev + 1 : prev;
-          // Scroll to selected item
+          const newIndex = prev < visibleStockCount - 1 ? prev + 1 : prev;
           setTimeout(() => {
             const selectedElement = document.querySelector(
               `[data-stock-index="${newIndex}"]`
@@ -328,7 +335,6 @@ const OrderManager = ({
         e.preventDefault();
         setSelectedStockIndex((prev) => {
           const newIndex = prev > 0 ? prev - 1 : -1;
-          // Scroll to selected item
           setTimeout(() => {
             const selectedElement = document.querySelector(
               `[data-stock-index="${newIndex}"]`
@@ -344,7 +350,7 @@ const OrderManager = ({
         e.preventDefault();
         if (selectedStockIndex >= 0) {
           handleStockSelect(filteredStocks[selectedStockIndex]);
-        } else if (filteredStocks.length > 0) {
+        } else if (visibleStockCount > 0) {
           handleStockSelect(filteredStocks[0]);
         }
         break;
@@ -442,6 +448,9 @@ const OrderManager = ({
     setNewCostLabel("");
     setNewCostAmount("");
     setNewCostType("add");
+    setCustomerNameError("");
+    setMobileError("");
+    setGstinError("");
   };
 
   const handleCancelEdit = () => {
@@ -452,22 +461,46 @@ const OrderManager = ({
   };
 
   const handleCreateOrder = async () => {
+    // Inline validation — clear previous errors first
+    setCustomerNameError("");
+    setMobileError("");
+    setGstinError("");
+
+    let hasError = false;
+
     if (orderItems.length === 0) {
       alert("Please add at least one item to the order");
       return;
     }
 
     if (!customerInput.trim()) {
-      alert("Please enter a customer name");
-      return;
+      setCustomerNameError("Customer name is required.");
+      hasError = true;
     }
+
+    if (mobileNumber && !/^[6-9]\d{9}$/.test(mobileNumber.trim())) {
+      setMobileError("Enter a valid 10-digit mobile number (starts with 6–9).");
+      hasError = true;
+    }
+
+    if (
+      customerGstin &&
+      !/^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/.test(
+        customerGstin.trim().toUpperCase()
+      )
+    ) {
+      setGstinError("Invalid GSTIN format (e.g. 22AAAAA0000A1Z5).");
+      hasError = true;
+    }
+
+    if (hasError) return;
 
     setIsCreatingOrder(true);
 
     try {
       let customerId = selectedCustomer?.id;
 
-      // Create new customer if needed
+      // Create new customer if not existing
       if (!customerId && customerInput.trim()) {
         const newCustomer = await onCustomerCreate(customerInput.trim(), mobileNumber);
         customerId = newCustomer.id;
@@ -484,7 +517,8 @@ const OrderManager = ({
         weight: item.weight,
         stock_name: item.stock_name,
         stock_code: item.stock_code,
-        stock_length: item.stock_length
+        stock_length: item.stock_length,
+        is_from_stock_table: item.is_from_stock_table,
       }));
 
       const newOrder = await onOrderCreate(
@@ -501,22 +535,49 @@ const OrderManager = ({
         customerAddress,
         customerGstin
       );
-      // Ensure we have the complete order data with customer name
+
+      // Compute totals locally so print is correct immediately (DB RPC runs async)
+      const localSubtotal = orderItems.reduce(
+        (sum, oi) => sum + oi.price_per_piece * oi.pieces_used,
+        0
+      );
+      const additionalNet = additionalCosts.reduce(
+        (sum, c) => (c.type === "add" ? sum + c.amount : sum - c.amount),
+        0
+      );
+      const rawTotal = localSubtotal + additionalNet;
+      const gstAmount = gstEnabled ? rawTotal * (gstPercentage / 100) : 0;
+      const totalBeforeRound = rawTotal + gstAmount;
+      const localTotal = Math.round(totalBeforeRound);
+      const roundingAdj = localTotal - totalBeforeRound;
+
+      // Build a complete order object with all data needed for the print receipt
       const completeOrder = {
         ...newOrder,
         customer_name: selectedCustomer?.name || customerInput,
+        customer_address: customerAddress,
+        customer_gstin: customerGstin,
         color_code: colorCode,
-        order_items: items.map((item) => ({
-          ...item,
-          stock_name:
-            orderItems.find((oi) => oi.stock_id === item.stock_id)
-              ?.stock_name || "",
-          stock_code:
-            orderItems.find((oi) => oi.stock_id === item.stock_id)
-              ?.stock_code || "",
-          stock_length:
-            orderItems.find((oi) => oi.stock_id === item.stock_id)
-              ?.stock_length || "",
+        vehicle_number: vehicleNumber,
+        agent_name: agentName,
+        gst_enabled: gstEnabled,
+        gst_type: gstType,
+        gst_percentage: gstPercentage,
+        show_unit_price: showUnitPrice,
+        order_additional_costs: additionalCosts,
+        subtotal: localSubtotal,
+        raw_total: rawTotal,
+        gst_amount: gstAmount,
+        total_amount: localTotal,
+        rounding_adjustment: roundingAdj,
+        order_items: orderItems.map((oi) => ({
+          stock_id: oi.stock_id,
+          pieces_used: oi.pieces_used,
+          price_per_piece: oi.price_per_piece,
+          weight: oi.weight,
+          stock_name: oi.stock_name,
+          stock_code: oi.stock_code,
+          stock_length: oi.stock_length,
         })),
       };
       setCreatedOrder(completeOrder);
@@ -570,15 +631,38 @@ const OrderManager = ({
   const handleUpdateOrder = async () => {
     if (!editingOrder) return;
 
+    // Inline validation
+    setCustomerNameError("");
+    setMobileError("");
+    setGstinError("");
+    let hasError = false;
+
     if (orderItems.length === 0) {
       alert("Please add at least one item to the order");
       return;
     }
 
     if (!customerInput.trim()) {
-      alert("Please enter a customer name");
-      return;
+      setCustomerNameError("Customer name is required.");
+      hasError = true;
     }
+
+    if (mobileNumber && !/^[6-9]\d{9}$/.test(mobileNumber.trim())) {
+      setMobileError("Enter a valid 10-digit mobile number (starts with 6–9).");
+      hasError = true;
+    }
+
+    if (
+      customerGstin &&
+      !/^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/.test(
+        customerGstin.trim().toUpperCase()
+      )
+    ) {
+      setGstinError("Invalid GSTIN format (e.g. 22AAAAA0000A1Z5).");
+      hasError = true;
+    }
+
+    if (hasError) return;
 
     setIsCreatingOrder(true);
 
@@ -767,142 +851,146 @@ const OrderManager = ({
     // Attempt to find customer to get mobile number if available
     const orderCustomer = customers.find((c) => c.id === order.customer_id);
     const mobileNo = orderCustomer?.mobile_number || "";
+    const showPrice = order.show_unit_price;
+    const colSpan = showPrice ? 8 : 7;
 
-    const printContent = `
-      <div style="font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 15px; background: white; color: #000; font-size: 12px;">
-        <div style="text-align: center; margin-bottom: 20px; border-bottom: 1px solid #000; padding-bottom: 10px;">
-          <h1 style="margin: 0; font-size: 20px; font-weight: bold;">ORDER RECEIPT</h1>
+    const priceHeader = showPrice
+      ? `<th style="border:1px solid #000;padding:4px;text-align:center;font-size:10px;width:8%;font-weight:bold;">Rate/pc</th>
+         <th style="border:1px solid #000;padding:4px;text-align:center;font-size:10px;width:10%;font-weight:bold;">Amount</th>`
+      : "";
+
+    const itemRows = (order.order_items ?? [])
+      .map((item, index) => {
+        const iw = item.weight || 0;
+        const nw = iw * item.pieces_used;
+        const priceCell = showPrice
+          ? `<td style="border:1px solid #000;padding:3px;text-align:center;font-size:10px;">₹${Number(item.price_per_piece ?? 0).toFixed(2)}</td>
+             <td style="border:1px solid #000;padding:3px;text-align:center;font-size:10px;">₹${(Number(item.price_per_piece ?? 0) * item.pieces_used).toFixed(2)}</td>`
+          : "";
+        return `
+          <tr>
+            <td style="border:1px solid #000;padding:3px;text-align:center;font-size:10px;">${index + 1}</td>
+            <td style="border:1px solid #000;padding:3px;font-size:10px;">${item.stock_name}</td>
+            <td style="border:1px solid #000;padding:3px;font-size:10px;">${item.stock_code || "N/A"}</td>
+            <td style="border:1px solid #000;padding:3px;text-align:center;font-size:10px;">${item.stock_length || "N/A"}</td>
+            <td style="border:1px solid #000;padding:3px;text-align:center;font-size:10px;">${iw ? iw.toFixed(2) : "-"}</td>
+            <td style="border:1px solid #000;padding:3px;text-align:center;font-size:10px;">${item.pieces_used}</td>
+            <td style="border:1px solid #000;padding:3px;text-align:center;font-size:10px;">${nw > 0 ? nw.toFixed(2) : "-"}</td>
+            ${priceCell}
+          </tr>`;
+      })
+      .join("") || `<tr><td colspan="${colSpan}" style="border:1px solid #000;padding:3px;text-align:center;font-size:10px;">No items</td></tr>`;
+
+    const totalPcs = (order.order_items ?? []).reduce((s, i) => s + i.pieces_used, 0);
+    const totalNW = (order.order_items ?? []).reduce((s, i) => s + (i.weight || 0) * i.pieces_used, 0);
+    const subtotalCell = showPrice
+      ? `<td colspan="2" style="border:1px solid #000;padding:3px;text-align:center;font-size:10px;font-weight:bold;">₹${order.subtotal?.toFixed(2) ?? "0.00"}</td>`
+      : "";
+
+    const additionalCostRows = showPrice
+      ? (order.order_additional_costs ?? [])
+          .map(
+            (c) =>
+              `<tr><td style="padding:3px;border-bottom:1px solid #eaeaea;">${c.label}</td>
+               <td style="padding:3px;border-bottom:1px solid #eaeaea;text-align:right;">${c.type === "discount" ? "-" : "+"}₹${Number(c.amount).toFixed(2)}</td></tr>`
+          )
+          .join("")
+      : "";
+
+    const gstRows = showPrice && order.gst_enabled
+      ? `<tr><td style="padding:3px;border-bottom:1px solid #eaeaea;font-weight:bold;">Subtotal</td>
+           <td style="padding:3px;border-bottom:1px solid #eaeaea;text-align:right;font-weight:bold;">₹${order.raw_total?.toFixed(2) ?? "0.00"}</td></tr>
+         <tr><td style="padding:3px;border-bottom:1px solid #eaeaea;">GST (${order.gst_percentage ?? 0}%)</td>
+           <td style="padding:3px;border-bottom:1px solid #eaeaea;text-align:right;">₹${order.gst_amount?.toFixed(2) ?? "0.00"}</td></tr>`
+      : "";
+
+    const roundRow = showPrice && order.rounding_adjustment
+      ? `<tr><td style="padding:3px;border-bottom:1px solid #eaeaea;">Round Off</td>
+           <td style="padding:3px;border-bottom:1px solid #eaeaea;text-align:right;">${order.rounding_adjustment > 0 ? "+" : ""}₹${order.rounding_adjustment.toFixed(2)}</td></tr>`
+      : "";
+
+    const totalsBlock = showPrice
+      ? `<div style="width:40%;float:right;margin-top:10px;">
+           <table style="width:100%;border-collapse:collapse;font-size:11px;">
+             ${additionalCostRows}${gstRows}${roundRow}
+             <tr><td style="padding:5px 3px;font-weight:bold;border-top:2px solid #000;">Grand Total</td>
+               <td style="padding:5px 3px;font-weight:bold;text-align:right;border-top:2px solid #000;">₹${order.total_amount?.toFixed(2) ?? "0.00"}</td></tr>
+           </table>
+           <div style="clear:both;"></div>
+         </div>
+         <div style="clear:both;"></div>`
+      : "";
+
+    const html = `<!DOCTYPE html><html><head><title>Order Invoice - ${order.customer_name}</title>
+      <style>
+        @media print { body{margin:0} @page{size:A4;margin:10mm} button{display:none} }
+        body{font-family:Arial,sans-serif;background:#fff;color:#000;font-size:12px;}
+        table{page-break-inside:avoid;}
+      </style></head><body>
+      <div style="max-width:800px;margin:0 auto;padding:15px;">
+        <div style="text-align:center;margin-bottom:20px;border-bottom:1px solid #000;padding-bottom:10px;">
+          <h1 style="margin:0;font-size:20px;font-weight:bold;">ORDER INVOICE</h1>
         </div>
-        
-        <div style="display: flex; justify-content: space-between; margin-bottom: 15px;">
-          <div style="width: 48%;">
-            <h3 style="margin: 0; margin-bottom: 5px; font-size: 13px; font-weight: bold;">Customer Details:</h3>
-            <p style="margin: 2px 0; font-size: 11px;"><strong>Name:</strong> ${order.customer_name}</p>
-            
-            ${order.customer_address ? `<p style="margin: 2px 0; font-size: 11px;"><strong>Address:</strong> ${order.customer_address}</p>` : ""}
-            ${order.customer_gstin ? `<p style="margin: 2px 0; font-size: 11px;"><strong>GSTIN:</strong> ${order.customer_gstin}</p>` : ""}
-
-            ${mobileNo ? `<p style="margin: 2px 0; font-size: 11px;"><strong>Mobile:</strong> ${mobileNo}</p>` : ""}
+        <div style="display:flex;justify-content:space-between;margin-bottom:15px;">
+          <div style="width:48%;">
+            <h3 style="margin:0 0 5px;font-size:13px;font-weight:bold;">Customer Details:</h3>
+            <p style="margin:2px 0;font-size:11px;"><strong>Name:</strong> ${order.customer_name}</p>
+            ${order.customer_address ? `<p style="margin:2px 0;font-size:11px;"><strong>Address:</strong> ${order.customer_address}</p>` : ""}
+            ${order.customer_gstin ? `<p style="margin:2px 0;font-size:11px;"><strong>GSTIN:</strong> ${order.customer_gstin}</p>` : ""}
+            ${mobileNo ? `<p style="margin:2px 0;font-size:11px;"><strong>Mobile:</strong> ${mobileNo}</p>` : ""}
           </div>
-          <div style="width: 48%; text-align: right;">
-            <h3 style="margin: 0; margin-bottom: 5px; font-size: 13px; font-weight: bold;">Order Details:</h3>
-            <p style="margin: 2px 0; font-size: 11px;"><strong>Date:</strong> ${order.order_date}</p>
-            ${order.color_code ? `<p style="margin: 2px 0; font-size: 11px;"><strong>Color:</strong> ${order.color_code}</p>` : ""}
-            ${order.vehicle_number ? `<p style="margin: 2px 0; font-size: 11px;"><strong>Vehicle:</strong> ${order.vehicle_number}</p>` : ""}
-            ${order.agent_name ? `<p style="margin: 2px 0; font-size: 11px;"><strong>Agent:</strong> ${order.agent_name}</p>` : ""}
+          <div style="width:48%;text-align:right;">
+            <h3 style="margin:0 0 5px;font-size:13px;font-weight:bold;">Order Details:</h3>
+            <p style="margin:2px 0;font-size:11px;"><strong>Date:</strong> ${order.order_date}</p>
+            ${order.color_code ? `<p style="margin:2px 0;font-size:11px;"><strong>Color:</strong> ${order.color_code}</p>` : ""}
+            ${order.vehicle_number ? `<p style="margin:2px 0;font-size:11px;"><strong>Vehicle:</strong> ${order.vehicle_number}</p>` : ""}
+            ${order.agent_name ? `<p style="margin:2px 0;font-size:11px;"><strong>Agent:</strong> ${order.agent_name}</p>` : ""}
           </div>
         </div>
-
-        
-        <table style="width: 100%; border-collapse: collapse; margin-bottom: 10px; border: 1px solid #000;">
+        <table style="width:100%;border-collapse:collapse;margin-bottom:10px;border:1px solid #000;">
           <thead>
-            <tr style="border: 1px solid #000;">
-              <th style="border: 1px solid #000; padding: 4px; text-align: center; font-size: 10px; width: 5%; font-weight: bold;">Sr.</th>
-              <th style="border: 1px solid #000; padding: 4px; text-align: left; font-size: 10px; width: 25%; font-weight: bold;">Item Name</th>
-              <th style="border: 1px solid #000; padding: 4px; text-align: left; font-size: 10px; width: 15%; font-weight: bold;">Code</th>
-              <th style="border: 1px solid #000; padding: 4px; text-align: center; font-size: 10px; width: 10%; font-weight: bold;">Length</th>
-              <th style="border: 1px solid #000; padding: 4px; text-align: center; font-size: 10px; width: 10%; font-weight: bold;">Wt.(kg)</th>
-              <th style="border: 1px solid #000; padding: 4px; text-align: center; font-size: 10px; width: 10%; font-weight: bold;">Pcs</th>
-              <th style="border: 1px solid #000; padding: 4px; text-align: center; font-size: 10px; width: 15%; font-weight: bold;">Net Wt.(kg)</th>
-              ${order.show_unit_price ? `<th style="border: 1px solid #000; padding: 4px; text-align: center; font-size: 10px; width: 10%; font-weight: bold;">Price</th>` : ""}
+            <tr>
+              <th style="border:1px solid #000;padding:4px;text-align:center;font-size:10px;width:5%;font-weight:bold;">Sr.</th>
+              <th style="border:1px solid #000;padding:4px;text-align:left;font-size:10px;width:25%;font-weight:bold;">Item Name</th>
+              <th style="border:1px solid #000;padding:4px;text-align:left;font-size:10px;width:12%;font-weight:bold;">Code</th>
+              <th style="border:1px solid #000;padding:4px;text-align:center;font-size:10px;width:10%;font-weight:bold;">Length</th>
+              <th style="border:1px solid #000;padding:4px;text-align:center;font-size:10px;width:8%;font-weight:bold;">Wt.(kg)</th>
+              <th style="border:1px solid #000;padding:4px;text-align:center;font-size:10px;width:8%;font-weight:bold;">Pcs</th>
+              <th style="border:1px solid #000;padding:4px;text-align:center;font-size:10px;width:12%;font-weight:bold;">Net Wt.(kg)</th>
+              ${priceHeader}
             </tr>
           </thead>
-          <tbody>
-            ${order.order_items
-        ?.map((item, index) => {
-          const itemWeight = item.weight || 0;
-          const netWeight = itemWeight * item.pieces_used;
-          return `
-                  <tr>
-                    <td style="border: 1px solid #000; padding: 3px; text-align: center; font-size: 10px;">${index + 1}</td>
-                    <td style="border: 1px solid #000; padding: 3px; font-size: 10px;">${item.stock_name}</td>
-                    <td style="border: 1px solid #000; padding: 3px; font-size: 10px;">${item.stock_code || "N/A"}</td>
-                    <td style="border: 1px solid #000; padding: 3px; text-align: center; font-size: 10px;">${item.stock_length || "N/A"}</td>
-                    <td style="border: 1px solid #000; padding: 3px; text-align: center; font-size: 10px;">${itemWeight ? itemWeight.toFixed(2) : "-"}</td>
-                    <td style="border: 1px solid #000; padding: 3px; text-align: center; font-size: 10px;">${item.pieces_used}</td>
-                    <td style="border: 1px solid #000; padding: 3px; text-align: center; font-size: 10px;">${netWeight > 0 ? netWeight.toFixed(2) : "-"}</td>
-                    ${order.show_unit_price ? `<td style="border: 1px solid #000; padding: 3px; text-align: center; font-size: 10px;">₹${(item.price_per_piece * item.pieces_used).toFixed(2)}</td>` : ""}
-                  </tr>
-                `;
-        })
-        .join("") || "<tr><td colspan='8' style='border: 1px solid #000; padding: 3px; text-align: center; font-size: 10px;'>No items</td></tr>"}
-          </tbody>
+          <tbody>${itemRows}</tbody>
           <tfoot>
-            <tr style="border: 1px solid #000;">
-              <td colspan="5" style="border: 1px solid #000; padding: 3px; text-align: right; font-size: 10px; font-weight: bold;">Total:</td>
-              <td style="border: 1px solid #000; padding: 3px; text-align: center; font-size: 10px; font-weight: bold;">
-                ${order.order_items?.reduce((total, item) => total + item.pieces_used, 0) || 0} pcs
-              </td>
-              <td style="border: 1px solid #000; padding: 3px; text-align: center; font-size: 10px; font-weight: bold;">
-                ${order.order_items?.reduce((sum, item) => sum + ((item.weight || 0) * item.pieces_used), 0).toFixed(2)} kg
-              </td>
-              ${order.show_unit_price ? `<td style="border: 1px solid #000; padding: 3px; text-align: center; font-size: 10px; font-weight: bold;">₹${order.subtotal?.toFixed(2) || "0.00"}</td>` : ""}
+            <tr>
+              <td colspan="5" style="border:1px solid #000;padding:3px;text-align:right;font-size:10px;font-weight:bold;">Total:</td>
+              <td style="border:1px solid #000;padding:3px;text-align:center;font-size:10px;font-weight:bold;">${totalPcs} pcs</td>
+              <td style="border:1px solid #000;padding:3px;text-align:center;font-size:10px;font-weight:bold;">${totalNW.toFixed(2)} kg</td>
+              ${subtotalCell}
             </tr>
           </tfoot>
         </table>
-
-        ${order.show_unit_price ? `
-        <div style="width: 40%; float: right; margin-top: 10px;">
-          <table style="width: 100%; border-collapse: collapse; font-size: 11px;">
-            ${(order.order_additional_costs || []).map(cost => `
-              <tr>
-                <td style="padding: 3px; border-bottom: 1px solid #eaeaea;">${cost.label}</td>
-                <td style="padding: 3px; border-bottom: 1px solid #eaeaea; text-align: right;">${cost.type === "discount" ? "-" : "+"}₹${cost.amount.toFixed(2)}</td>
-              </tr>
-            `).join("")}
-            ${order.gst_enabled ? `
-              <tr>
-                <td style="padding: 3px; border-bottom: 1px solid #eaeaea; font-weight: bold;">Subtotal</td>
-                <td style="padding: 3px; border-bottom: 1px solid #eaeaea; text-align: right; font-weight: bold;">₹${order.raw_total?.toFixed(2) || "0.00"}</td>
-              </tr>
-              <tr>
-                <td style="padding: 3px; border-bottom: 1px solid #eaeaea;">GST (${order.gst_percentage}%)</td>
-                <td style="padding: 3px; border-bottom: 1px solid #eaeaea; text-align: right;">₹${order.gst_amount?.toFixed(2) || "0.00"}</td>
-              </tr>
-            ` : ""}
-            ${order.rounding_adjustment ? `
-              <tr>
-                <td style="padding: 3px; border-bottom: 1px solid #eaeaea;">Round Off</td>
-                <td style="padding: 3px; border-bottom: 1px solid #eaeaea; text-align: right;">${order.rounding_adjustment > 0 ? "+" : ""}₹${order.rounding_adjustment.toFixed(2)}</td>
-              </tr>
-            ` : ""}
-            <tr>
-              <td style="padding: 5px 3px; font-weight: bold; border-top: 2px solid #000;">Grand Total</td>
-              <td style="padding: 5px 3px; font-weight: bold; text-align: right; border-top: 2px solid #000;">₹${order.total_amount?.toFixed(2) || "0.00"}</td>
-            </tr>
-          </table>
-          <div style="clear: both;"></div>
-        </div>
-        <div style="clear: both;"></div>
-        ` : ""}
-
-
-        <div style="margin-top: 15px; text-align: center; font-size: 10px; color: #666;">
+        ${totalsBlock}
+        <div style="margin-top:15px;text-align:center;font-size:10px;color:#666;">
           Generated: ${new Date().toLocaleDateString()} ${new Date().toLocaleTimeString()}
         </div>
       </div>
-    `;
+    </body></html>`;
 
-    const printWindow = window.open("", "_blank");
-    if (printWindow) {
-      printWindow.document.write(`
-        <html>
-          <head>
-            <title>Order Receipt - ${order.customer_name}</title>
-            <style>
-              @media print {
-                body { margin: 0; }
-                @page { size: A4; margin: 10mm; }
-              }
-              body { font-family: Arial, sans-serif; }
-              table { page-break-inside: avoid; }
-            </style>
-          </head>
-          <body>${printContent}</body>
-        </html>
-      `);
-      printWindow.document.close();
-      printWindow.print();
+    // Print via hidden iframe — no new tab/window
+    const iframe = document.createElement("iframe");
+    iframe.style.cssText = "position:fixed;right:0;bottom:0;width:0;height:0;border:none;";
+    document.body.appendChild(iframe);
+    const iframeDoc = iframe.contentDocument || iframe.contentWindow?.document;
+    if (iframeDoc) {
+      iframeDoc.open();
+      iframeDoc.write(html);
+      iframeDoc.close();
+      iframe.contentWindow?.focus();
+      setTimeout(() => {
+        iframe.contentWindow?.print();
+        setTimeout(() => document.body.removeChild(iframe), 1000);
+      }, 500);
     }
   };
 
@@ -1129,6 +1217,9 @@ const OrderManager = ({
                         New customer "{customerInput}" will be created
                       </p>
                     )}
+                    {customerNameError && (
+                      <p className="text-sm text-red-500 mt-1">{customerNameError}</p>
+                    )}
                   </div>
 
                   <div>
@@ -1136,10 +1227,17 @@ const OrderManager = ({
                     <Input
                       id="mobile-number"
                       value={mobileNumber}
-                      onChange={(e) => setMobileNumber(e.target.value)}
+                      onChange={(e) => {
+                        setMobileNumber(e.target.value);
+                        if (mobileError) setMobileError("");
+                      }}
                       placeholder="Enter mobile number"
                       autoComplete="off"
+                      className={mobileError ? "border-red-500" : ""}
                     />
+                    {mobileError && (
+                      <p className="text-sm text-red-500 mt-1">{mobileError}</p>
+                    )}
                   </div>
 
 
@@ -1159,10 +1257,17 @@ const OrderManager = ({
                     <Input
                       id="customer-gstin"
                       value={customerGstin}
-                      onChange={(e) => setCustomerGstin(e.target.value)}
+                      onChange={(e) => {
+                        setCustomerGstin(e.target.value);
+                        if (gstinError) setGstinError("");
+                      }}
                       placeholder="Enter GSTIN number"
                       autoComplete="off"
+                      className={gstinError ? "border-red-500" : ""}
                     />
+                    {gstinError && (
+                      <p className="text-sm text-red-500 mt-1">{gstinError}</p>
+                    )}
                   </div>
                 </div>
 
@@ -1296,7 +1401,7 @@ const OrderManager = ({
                         onChange={(e) => setItemWeight(Number(e.target.value) || undefined)}
                         placeholder={selectedStock?.weight ? `${selectedStock.weight} (from stock)` : "Enter weight"}
                         min="0"
-                        disabled={selectedStock?.weight !== undefined && selectedStock?.weight !== 0 && selectedStock?.weight !== null}
+                      // disabled={selectedStock?.weight !== undefined && selectedStock?.weight !== 0 && selectedStock?.weight !== null}
                       />
                     </div>
 
@@ -1374,7 +1479,7 @@ const OrderManager = ({
                 {/* Pricing & GST Section */}
                 <div className="border rounded-lg p-4 space-y-4 bg-gray-50/50">
                   <h3 className="text-lg font-semibold border-bottom pb-2">Pricing & GST</h3>
-                  
+
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 items-end">
                     <div className="flex items-center space-x-2 h-10">
                       <Switch
@@ -1432,7 +1537,7 @@ const OrderManager = ({
 
                   <div className="space-y-4 pt-4 border-t">
                     <h4 className="font-medium text-sm text-gray-700">Additional Costs / Discounts</h4>
-                    
+
                     <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
                       <div className="md:col-span-1">
                         <Label htmlFor="cost-label">Label</Label>
@@ -1652,6 +1757,9 @@ const OrderManager = ({
                     New customer "{customerInput}" will be created
                   </p>
                 )}
+                {customerNameError && (
+                  <p className="text-sm text-red-500 mt-1">{customerNameError}</p>
+                )}
               </div>
 
               <div>
@@ -1659,10 +1767,17 @@ const OrderManager = ({
                 <Input
                   id="edit-mobile-number"
                   value={mobileNumber}
-                  onChange={(e) => setMobileNumber(e.target.value)}
+                  onChange={(e) => {
+                    setMobileNumber(e.target.value);
+                    if (mobileError) setMobileError("");
+                  }}
                   placeholder="Enter mobile number"
                   autoComplete="off"
+                  className={mobileError ? "border-red-500" : ""}
                 />
+                {mobileError && (
+                  <p className="text-sm text-red-500 mt-1">{mobileError}</p>
+                )}
               </div>
 
 
@@ -1682,10 +1797,17 @@ const OrderManager = ({
                 <Input
                   id="edit-customer-gstin"
                   value={customerGstin}
-                  onChange={(e) => setCustomerGstin(e.target.value)}
+                  onChange={(e) => {
+                    setCustomerGstin(e.target.value);
+                    if (gstinError) setGstinError("");
+                  }}
                   placeholder="Enter GSTIN number"
                   autoComplete="off"
+                  className={gstinError ? "border-red-500" : ""}
                 />
+                {gstinError && (
+                  <p className="text-sm text-red-500 mt-1">{gstinError}</p>
+                )}
               </div>
             </div>
 
@@ -1877,7 +1999,7 @@ const OrderManager = ({
             {/* Pricing & GST Section */}
             <div className="border rounded-lg p-4 space-y-4 bg-gray-50/50">
               <h3 className="text-lg font-semibold border-bottom pb-2">Pricing & GST</h3>
-              
+
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 items-end">
                 <div className="flex items-center space-x-2 h-10">
                   <Switch
@@ -1935,7 +2057,7 @@ const OrderManager = ({
 
               <div className="space-y-4 pt-4 border-t">
                 <h4 className="font-medium text-sm text-gray-700">Additional Costs / Discounts</h4>
-                
+
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
                   <div className="md:col-span-1">
                     <Label htmlFor="edit-cost-label">Label</Label>
@@ -2259,10 +2381,10 @@ const OrderManager = ({
         open={showSuccessDialog}
         onOpenChange={setShowSuccessDialog}
         title="Order Created Successfully!"
-        message={`Order has been created successfully for ${createdOrder?.customer_name || "customer"
-          }.`}
+        message={`Order has been created successfully for ${createdOrder?.customer_name || "customer"}.`}
         showPrintOption={true}
         onPrint={() => createdOrder && handlePrintOrder(createdOrder)}
+        printLabel="Print Order Invoice"
       />
     </div>
   );

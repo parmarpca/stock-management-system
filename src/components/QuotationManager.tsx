@@ -2492,10 +2492,10 @@ const QuotationManager = ({
         open={showSuccessDialog}
         onOpenChange={setShowSuccessDialog}
         title="Quotation Created Successfully!"
-        message={`Quotation for ${createdQuotation?.customer_name || ""
-          } has been created.`}
+        message={`Quotation for ${createdQuotation?.customer_name || ""} has been created.`}
         onPrint={handleSuccessDialogPrint}
         showPrintOption={true}
+        printLabel="Print Quotation"
       />
     </div>
   );
