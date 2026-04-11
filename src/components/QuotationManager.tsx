@@ -132,6 +132,7 @@ const QuotationManager = ({
 
   // Current item being added
   const [stockSearch, setStockSearch] = useState("");
+  const [stockLengthFilter, setStockLengthFilter] = useState<string>("all");
   const [selectedStock, setSelectedStock] = useState<Stock | null>(null);
   const [pieces, setPieces] = useState(0);
   const [pricePerPiece, setPricePerPiece] = useState(0);
@@ -172,8 +173,9 @@ const QuotationManager = ({
 
   const filteredStocks = stocks.filter(
     (stock) =>
-      stock.name.toLowerCase().includes(stockSearch.toLowerCase()) ||
-      stock.code.toLowerCase().includes(stockSearch.toLowerCase())
+      (stock.name.toLowerCase().includes(stockSearch.toLowerCase()) ||
+        stock.code.toLowerCase().includes(stockSearch.toLowerCase())) &&
+      (stockLengthFilter === "all" || stock.length === stockLengthFilter)
   );
 
   const filteredCustomers = customers.filter((customer) =>
@@ -496,6 +498,7 @@ const QuotationManager = ({
     setGstPercentage(18);
     setShowUnitPrice(false);
     setStockSearch("");
+    setStockLengthFilter("all");
     setSelectedStock(null);
     setPieces(0);
     setPricePerPiece(0);
@@ -1160,20 +1163,45 @@ const QuotationManager = ({
                         </div>
                       </div>
                     ) : (
-                      <div className="relative">
-                        <Label>Search Stock</Label>
-                        <Input
-                          value={stockSearch}
-                          onChange={(e) => {
-                            setStockSearch(e.target.value);
-                            setShowStockSuggestions(true);
-                          }}
-                          placeholder="Search by name or code..."
-                          id="stock-search-input"
-                          onKeyDown={(e) =>
-                            handleItemKeyDown(e, "stock-search")
-                          }
-                        />
+                      <div className="space-y-3">
+                        <div className="flex items-center gap-3">
+                          <div className="w-36">
+                            <Label htmlFor="create-stock-length-filter">Length</Label>
+                            <Select
+                              value={stockLengthFilter}
+                              onValueChange={(v) => {
+                                setStockLengthFilter(v);
+                                setSelectedStock(null);
+                                setShowStockSuggestions(true);
+                              }}
+                            >
+                              <SelectTrigger id="create-stock-length-filter">
+                                <SelectValue placeholder="All" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="all">All lengths</SelectItem>
+                                {stockLengthOptions.map((l) => (
+                                  <SelectItem key={l} value={l}>{l}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <div className="relative flex-1">
+                            <Label>Search Stock</Label>
+                            <Input
+                              value={stockSearch}
+                              onChange={(e) => {
+                                setStockSearch(e.target.value);
+                                setShowStockSuggestions(true);
+                              }}
+                              placeholder="Search by name or code..."
+                              id="stock-search-input"
+                              onKeyDown={(e) =>
+                                handleItemKeyDown(e, "stock-search")
+                              }
+                            />
+                          </div>
+                        </div>
                         {showStockSuggestions &&
                           filteredStocks.length > 0 &&
                           stockSearch && (
@@ -2013,17 +2041,42 @@ const QuotationManager = ({
                     </div>
                   </div>
                 ) : (
-                  <div className="relative">
-                    <Label>Search Stock</Label>
-                    <Input
-                      value={stockSearch}
-                      onChange={(e) => {
-                        setStockSearch(e.target.value);
-                        setShowStockSuggestions(true);
-                      }}
-                      placeholder="Search by name or code..."
-                      onKeyDown={(e) => handleItemKeyDown(e, "stock-search")}
-                    />
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-3">
+                      <div className="w-36">
+                        <Label htmlFor="edit-stock-length-filter-q">Length</Label>
+                        <Select
+                          value={stockLengthFilter}
+                          onValueChange={(v) => {
+                            setStockLengthFilter(v);
+                            setSelectedStock(null);
+                            setShowStockSuggestions(true);
+                          }}
+                        >
+                          <SelectTrigger id="edit-stock-length-filter-q">
+                            <SelectValue placeholder="All" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="all">All lengths</SelectItem>
+                            {stockLengthOptions.map((l) => (
+                              <SelectItem key={l} value={l}>{l}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="relative flex-1">
+                        <Label>Search Stock</Label>
+                        <Input
+                          value={stockSearch}
+                          onChange={(e) => {
+                            setStockSearch(e.target.value);
+                            setShowStockSuggestions(true);
+                          }}
+                          placeholder="Search by name or code..."
+                          onKeyDown={(e) => handleItemKeyDown(e, "stock-search")}
+                        />
+                      </div>
+                    </div>
                     {showStockSuggestions &&
                       filteredStocks.length > 0 &&
                       stockSearch && (

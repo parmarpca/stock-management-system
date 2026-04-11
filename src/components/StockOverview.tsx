@@ -132,40 +132,28 @@ const StockOverview = ({
     )
     .slice(0, 5);
 
-  // Handle code input changes
+  // Given a code and length, check if that pair already exists in stocks
+  const findExistingStock = (code: string, length: string): Stock | null =>
+    stocks.find(
+      (s) =>
+        s.code.toLowerCase() === code.toLowerCase() &&
+        s.length === length
+    ) ?? null;
+
+  // Handle code input changes — show suggestions, but don't auto-lock until user picks one
   const handleCodeInputChange = (value: string) => {
     setCodeInput(value);
-    setNewStock((prev) => ({ ...prev, code: value }));
+    setNewStock((prev) => {
+      // Re-check existing stock with current length
+      const match = findExistingStock(value, prev.length);
+      setExistingStock(match);
+      return { ...prev, code: value };
+    });
     setShowCodeSuggestions(true);
     setSelectedCodeIndex(-1);
-
-    // Check if code matches existing stock
-    const matchingStock = stocks.find(
-      (stock) => stock.code.toLowerCase() === value.toLowerCase()
-    );
-
-    if (matchingStock) {
-      setExistingStock(matchingStock);
-      setNewStock((prev) => ({
-        ...prev,
-        name: matchingStock.name,
-        length: matchingStock.length,
-        weight: matchingStock.weight,
-      }));
-    } else {
-      setExistingStock(null);
-      if (value.trim() === "") {
-        setNewStock((prev) => ({
-          ...prev,
-          name: "",
-          length: "16ft",
-          weight: undefined,
-        }));
-      }
-    }
   };
 
-  // Handle code suggestion selection
+  // Handle code suggestion selection — sets name/length/weight from selected
   const handleCodeSelect = (stock: Stock) => {
     setCodeInput(stock.code);
     setNewStock((prev) => ({
@@ -175,9 +163,23 @@ const StockOverview = ({
       length: stock.length,
       weight: stock.weight,
     }));
+    // The picked stock IS the exact code+length match
     setExistingStock(stock);
     setShowCodeSuggestions(false);
     setSelectedCodeIndex(-1);
+  };
+
+  // When the length dropdown changes, re-evaluate if the code+length combo exists
+  const handleLengthChange = (value: stockLength) => {
+    setNewStock((prev) => {
+      const match = findExistingStock(prev.code, value);
+      setExistingStock(match);
+      if (match) {
+        // Pre-fill name and weight from the matched stock
+        return { ...prev, length: value, name: match.name, weight: match.weight };
+      }
+      return { ...prev, length: value };
+    });
   };
 
   // Handle keyboard navigation for code suggestions
@@ -676,12 +678,12 @@ const StockOverview = ({
                     )}
                   {codeInput && !existingStock && (
                     <p className="text-sm text-blue-600 mt-1">
-                      New stock code "{codeInput}" will be created
+                      New stock will be created for code "{codeInput}" + length "{newStock.length}"
                     </p>
                   )}
                   {existingStock && (
                     <p className="text-sm text-green-600 mt-1">
-                      Adding quantity to existing stock: {existingStock.name}
+                      Will add quantity to existing: {existingStock.name} ({existingStock.length})
                     </p>
                   )}
                 </div>
@@ -708,16 +710,9 @@ const StockOverview = ({
                   <select
                     id="stock-length"
                     title="Select stock length"
-                    className={`w-full border rounded-md py-2 px-3 ${existingStock ? "bg-gray-100" : ""
-                      }`}
+                    className="w-full border rounded-md py-2 px-3"
                     value={newStock.length}
-                    onChange={(e) =>
-                      setNewStock((prev) => ({
-                        ...prev,
-                        length: e.target.value as stockLength,
-                      }))
-                    }
-                    disabled={!!existingStock}
+                    onChange={(e) => handleLengthChange(e.target.value as stockLength)}
                   >
                     {stockLengthOptions.map((length) => (
                       <option key={length} value={length}>
@@ -725,6 +720,11 @@ const StockOverview = ({
                       </option>
                     ))}
                   </select>
+                  {existingStock && (
+                    <p className="text-xs text-amber-600 mt-1">
+                      ⚠️ Stock with code <strong>{existingStock.code}</strong> and length <strong>{existingStock.length}</strong> already exists ({existingStock.quantity} pcs). Adding will increase its quantity.
+                    </p>
+                  )}
                 </div>
 
                 {/* Stock Weight */}
@@ -748,14 +748,7 @@ const StockOverview = ({
                     placeholder="0.00"
                     autoComplete="off"
                     min="0"
-                    disabled={!!existingStock}
-                    className={existingStock ? "bg-gray-100" : ""}
                   />
-                  {existingStock && existingStock.weight && (
-                    <p className="text-sm text-gray-600 mt-1">
-                      Current weight: {existingStock.weight}kg
-                    </p>
-                  )}
                 </div>
 
                 {/* Stock Quantity */}

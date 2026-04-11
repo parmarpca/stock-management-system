@@ -37,6 +37,7 @@ import { Switch } from "@/components/ui/switch";
 import { SuccessDialog } from "@/components/ui/success-dialog";
 import { Stock, Customer, Order, OrderItem, OrderAdditionalCost } from "@/hooks/useStockData";
 import { useCompanySettings } from "@/hooks/useCompanySettings";
+import { stockLengthOptions } from "@/constants/config";
 import { cn } from "@/lib/utils";
 
 interface OrderManagerProps {
@@ -138,6 +139,7 @@ const OrderManager = ({
 
   // Current item being added
   const [stockSearch, setStockSearch] = useState("");
+  const [stockLengthFilter, setStockLengthFilter] = useState<string>("all");
   const [selectedStock, setSelectedStock] = useState<Stock | null>(null);
   const [pieces, setPieces] = useState(0);
   const [stockError, setStockError] = useState("");
@@ -191,8 +193,9 @@ const OrderManager = ({
 
   const filteredStocks = stocks.filter(
     (stock) =>
-      stock.name.toLowerCase().includes(stockSearch.toLowerCase()) ||
-      stock.code.toLowerCase().includes(stockSearch.toLowerCase())
+      (stock.name.toLowerCase().includes(stockSearch.toLowerCase()) ||
+        stock.code.toLowerCase().includes(stockSearch.toLowerCase())) &&
+      (stockLengthFilter === "all" || stock.length === stockLengthFilter)
   );
 
   const filteredCustomers = customers.filter((customer) =>
@@ -438,6 +441,7 @@ const OrderManager = ({
     setOrderItems([]);
     setOriginalOrderItems([]);
     setStockSearch("");
+    setStockLengthFilter("all");
     setSelectedStock(null);
     setPieces(0);
     setPricePerPiece("");
@@ -1322,9 +1326,30 @@ const OrderManager = ({
                 <div className="border rounded-lg p-4 space-y-4">
                   <h3 className="text-lg font-semibold">Add Items to Order</h3>
 
-
                   <div className="grid grid-cols-1 md:grid-cols-4 lg:grid-cols-5 gap-4">
-                    <div className="relative">
+                    <div>
+                      <Label htmlFor="stock-length-filter">Length</Label>
+                      <Select
+                        value={stockLengthFilter}
+                        onValueChange={(v) => {
+                          setStockLengthFilter(v);
+                          setSelectedStock(null);
+                          setShowStockSuggestions(true);
+                        }}
+                      >
+                        <SelectTrigger id="stock-length-filter">
+                          <SelectValue placeholder="All lengths" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">All lengths</SelectItem>
+                          {stockLengthOptions.map((l) => (
+                            <SelectItem key={l} value={l}>{l}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="relative md:col-span-1 lg:col-span-1">
                       <Label htmlFor="stock-search">Search Stock</Label>
                       <Input
                         id="stock-search"
@@ -1856,7 +1881,29 @@ const OrderManager = ({
               <h3 className="text-lg font-semibold">Edit Order Items</h3>
 
               <div className="grid grid-cols-1 md:grid-cols-4 lg:grid-cols-5 gap-4">
-                <div className="relative">
+                <div>
+                  <Label htmlFor="edit-stock-length-filter">Length</Label>
+                  <Select
+                    value={stockLengthFilter}
+                    onValueChange={(v) => {
+                      setStockLengthFilter(v);
+                      setSelectedStock(null);
+                      setShowStockSuggestions(true);
+                    }}
+                  >
+                    <SelectTrigger id="edit-stock-length-filter">
+                      <SelectValue placeholder="All lengths" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All lengths</SelectItem>
+                      {stockLengthOptions.map((l) => (
+                        <SelectItem key={l} value={l}>{l}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="relative md:col-span-1 lg:col-span-1">
                   <Label htmlFor="edit-stock-search">Search Stock</Label>
                   <Input
                     id="edit-stock-search"

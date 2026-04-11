@@ -187,25 +187,25 @@ export const useStockData = () => {
     weight?: number;
   }) => {
     try {
-      // Check if stock with same code exists
+      // Unique key is the combination of code + length
       const { data: existingStock, error: checkError } = await supabase
         .from("stocks")
         .select("*")
         .eq("code", stockData.code)
-        .single();
+        .eq("length", stockData.length)
+        .maybeSingle();
 
-      if (checkError && checkError.code !== "PGRST116") {
+      if (checkError) {
         throw checkError;
       }
 
       if (existingStock) {
-        // Update existing stock quantity and other fields
+        // Same code AND same length → add to existing quantity
         const { data, error } = await supabase
           .from("stocks")
           .update({
             quantity: existingStock.quantity + stockData.quantity,
             name: stockData.name,
-            length: stockData.length,
             weight: stockData.weight,
           })
           .eq("id", existingStock.id)
@@ -216,7 +216,7 @@ export const useStockData = () => {
         await fetchStocks();
         return data;
       } else {
-        // Create new stock
+        // Different code, or same code but different length → create new row
         const { data, error } = await supabase
           .from("stocks")
           .insert([stockData])
