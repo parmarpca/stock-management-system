@@ -1,4 +1,4 @@
-import { CheckCircle, Printer, X } from "lucide-react";
+import { CheckCircle, Printer } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -14,6 +14,7 @@ interface SuccessDialogProps {
   message: string;
   onPrint?: () => void;
   showPrintOption?: boolean;
+  printLabel?: string;
 }
 
 export const SuccessDialog = ({
@@ -23,6 +24,7 @@ export const SuccessDialog = ({
   message,
   onPrint,
   showPrintOption = false,
+  printLabel = "Print",
 }: SuccessDialogProps) => {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -55,7 +57,7 @@ export const SuccessDialog = ({
                 className="flex-1 flex items-center space-x-2"
               >
                 <Printer className="h-4 w-4" />
-                <span>Print Quotation</span>
+                <span>{printLabel}</span>
               </Button>
             )}
           </div>
