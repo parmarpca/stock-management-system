@@ -56,8 +56,9 @@ interface OrderManagerProps {
     showUnitPrice?: boolean,
     additionalCosts?: Omit<OrderAdditionalCost, "id" | "order_id">[],
     customerAddress?: string,
-    customerGstin?: string
-  ) => Promise<any>;
+    customerGstin?: string,
+    orderDate?: string
+  ) => Promise<Order>;
   onOrderUpdate: (
     orderId: string,
     customerId: string,
@@ -72,11 +73,11 @@ interface OrderManagerProps {
     additionalCosts?: Omit<OrderAdditionalCost, "id" | "order_id">[],
     customerAddress?: string,
     customerGstin?: string
-  ) => Promise<any>;
-  onOrderDelete: (orderId: string) => Promise<any>;
-  onOrderHide: (orderId: string) => Promise<any>;
-  onOrderShow: (orderId: string) => Promise<any>;
-  onCustomerCreate: (name: string, mobileNumber?: string) => Promise<any>;
+  ) => Promise<Order>;
+  onOrderDelete: (orderId: string) => Promise<void>;
+  onOrderHide: (orderId: string) => Promise<void>;
+  onOrderShow: (orderId: string) => Promise<void>;
+  onCustomerCreate: (name: string, mobileNumber?: string) => Promise<Customer>;
   fetchCustomers: () => Promise<void>;
   fetchOrders: (
     includeHidden?: boolean,
@@ -95,6 +96,7 @@ interface OrderItemForm {
   stock_code: string;
   stock_length: string;
   is_from_stock_table?: boolean;
+  rate_type?: "per_pc" | "per_kg";
 }
 
 const OrderManager = ({
@@ -118,7 +120,7 @@ const OrderManager = ({
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isCreatingOrder, setIsCreatingOrder] = useState(false);
   const [showSuccessDialog, setShowSuccessDialog] = useState(false);
-  const [createdOrder, setCreatedOrder] = useState<any>(null);
+  const [createdOrder, setCreatedOrder] = useState<Order | null>(null);
   const [editingOrder, setEditingOrder] = useState<Order | null>(null);
   const [originalOrderItems, setOriginalOrderItems] = useState<OrderItemForm[]>(
     []
@@ -150,11 +152,13 @@ const OrderManager = ({
   const [mobileNumber, setMobileNumber] = useState("");
   const [vehicleNumber, setVehicleNumber] = useState("");
   const [agentName, setAgentName] = useState("");
+  const [orderDate, setOrderDate] = useState(new Date().toISOString().split("T")[0]);
   const [pricePerPiece, setPricePerPiece] = useState<number | "">("");
+  const [rateType, setRateType] = useState<"per_pc" | "per_kg">("per_kg");
   const [itemWeight, setItemWeight] = useState<number | undefined>(undefined);
 
   // GST States
-  const [gstEnabled, setGstEnabled] = useState(false);
+  const [gstEnabled, setGstEnabled] = useState(true);
   const [gstType, setGstType] = useState<"CGST_SGST" | "IGST" | "UTGST">("CGST_SGST");
   const [gstPercentage, setGstPercentage] = useState(18);
   const [showUnitPrice, setShowUnitPrice] = useState(true);
@@ -404,6 +408,7 @@ const OrderManager = ({
       stock_code: selectedStock!.code,
       stock_length: selectedStock!.length,
       is_from_stock_table: true,
+      rate_type: rateType,
     };
 
     setOrderItems((prev) => [...prev, newItem]);
@@ -436,7 +441,9 @@ const OrderManager = ({
     setCustomerAddress("");
     setCustomerGstin("");
     setMobileNumber("");
-    setGstEnabled(false);
+    setOrderDate(new Date().toISOString().split("T")[0]);
+    setRateType("per_kg");
+    setGstEnabled(true);
     setAdditionalCosts([]);
     setOrderItems([]);
     setOriginalOrderItems([]);
@@ -526,6 +533,7 @@ const OrderManager = ({
         stock_code: item.stock_code,
         stock_length: item.stock_length,
         is_from_stock_table: item.is_from_stock_table,
+        rate_type: item.rate_type || "per_kg",
       }));
 
       const newOrder = await onOrderCreate(
@@ -540,12 +548,20 @@ const OrderManager = ({
         showUnitPrice,
         additionalCosts,
         customerAddress,
-        customerGstin
+        customerGstin,
+        orderDate
       );
 
       // Compute totals locally so print is correct immediately (DB RPC runs async)
       const localSubtotal = orderItems.reduce(
-        (sum, oi) => sum + oi.price_per_piece * oi.pieces_used,
+        (sum, oi) => {
+          const iw = oi.weight || 0;
+          const nw = iw * oi.pieces_used;
+          if (oi.rate_type === "per_kg" && nw > 0) {
+            return sum + oi.price_per_piece * nw;
+          }
+          return sum + oi.price_per_piece * oi.pieces_used;
+        },
         0
       );
       const additionalNet = additionalCosts.reduce(
@@ -585,7 +601,9 @@ const OrderManager = ({
           stock_name: oi.stock_name,
           stock_code: oi.stock_code,
           stock_length: oi.stock_length,
+          rate_type: oi.rate_type,
         })),
+        order_date: orderDate,
       };
       setCreatedOrder(completeOrder);
       resetForm();
@@ -608,6 +626,7 @@ const OrderManager = ({
     setColorCode(order.color_code || "");
     setVehicleNumber(order.vehicle_number || "");
     setAgentName(order.agent_name || "");
+    setOrderDate(order.order_date || new Date().toISOString().split("T")[0]);
     setGstEnabled(order.gst_enabled || false);
     setGstType(order.gst_type || "CGST_SGST");
     setGstPercentage(order.gst_percentage || 18);
@@ -694,7 +713,8 @@ const OrderManager = ({
         stock_name: item.stock_name,
         stock_code: item.stock_code,
         stock_length: item.stock_length,
-        is_from_stock_table: item.is_from_stock_table
+        is_from_stock_table: item.is_from_stock_table,
+        rate_type: item.rate_type || "per_kg"
       }));
 
       await onOrderUpdate(
@@ -860,9 +880,8 @@ const OrderManager = ({
     const mobileNo = orderCustomer?.mobile_number || "";
     const showPrice = order.show_unit_price;
     const colSpan = showPrice ? 8 : 7;
-
     const priceHeader = showPrice
-      ? `<th style="border:1px solid #000;padding:4px;text-align:center;font-size:10px;width:8%;font-weight:bold;">Rate/pc</th>
+      ? `<th style="border:1px solid #000;padding:4px;text-align:center;font-size:10px;width:10%;font-weight:bold;">Rate</th>
          <th style="border:1px solid #000;padding:4px;text-align:center;font-size:10px;width:10%;font-weight:bold;">Amount</th>`
       : "";
 
@@ -870,9 +889,13 @@ const OrderManager = ({
       .map((item, index) => {
         const iw = item.weight || 0;
         const nw = iw * item.pieces_used;
+        const rt = item.rate_type ?? "per_kg";
+        const rate = Number(item.price_per_piece ?? 0);
+        const amount = rt === "per_kg" ? rate * nw : rate * item.pieces_used;
+        const rateLabel = rt === "per_kg" ? `₹${rate.toFixed(2)}/kg` : `₹${rate.toFixed(2)}/pc`;
         const priceCell = showPrice
-          ? `<td style="border:1px solid #000;padding:3px;text-align:center;font-size:10px;">₹${Number(item.price_per_piece ?? 0).toFixed(2)}</td>
-             <td style="border:1px solid #000;padding:3px;text-align:center;font-size:10px;">₹${(Number(item.price_per_piece ?? 0) * item.pieces_used).toFixed(2)}</td>`
+          ? `<td style="border:1px solid #000;padding:3px;text-align:center;font-size:10px;">${rateLabel}</td>
+             <td style="border:1px solid #000;padding:3px;text-align:center;font-size:10px;">₹${amount.toFixed(2)}</td>`
           : "";
         return `
           <tr>
@@ -880,9 +903,9 @@ const OrderManager = ({
             <td style="border:1px solid #000;padding:3px;font-size:10px;">${item.stock_name}</td>
             <td style="border:1px solid #000;padding:3px;font-size:10px;">${item.stock_code || "N/A"}</td>
             <td style="border:1px solid #000;padding:3px;text-align:center;font-size:10px;">${item.stock_length || "N/A"}</td>
-            <td style="border:1px solid #000;padding:3px;text-align:center;font-size:10px;">${iw ? iw.toFixed(2) : "-"}</td>
             <td style="border:1px solid #000;padding:3px;text-align:center;font-size:10px;">${item.pieces_used}</td>
-            <td style="border:1px solid #000;padding:3px;text-align:center;font-size:10px;">${nw > 0 ? nw.toFixed(2) : "-"}</td>
+            <td style="border:1px solid #000;padding:3px;text-align:center;font-size:10px;">${iw ? iw.toFixed(3) : "-"}</td>
+            <td style="border:1px solid #000;padding:3px;text-align:center;font-size:10px;">${nw > 0 ? nw.toFixed(3) : "-"}</td>
             ${priceCell}
           </tr>`;
       })
@@ -896,12 +919,12 @@ const OrderManager = ({
 
     const additionalCostRows = showPrice
       ? (order.order_additional_costs ?? [])
-          .map(
-            (c) =>
-              `<tr><td style="padding:3px;border-bottom:1px solid #eaeaea;">${c.label}</td>
+        .map(
+          (c) =>
+            `<tr><td style="padding:3px;border-bottom:1px solid #eaeaea;">${c.label}</td>
                <td style="padding:3px;border-bottom:1px solid #eaeaea;text-align:right;">${c.type === "discount" ? "-" : "+"}₹${Number(c.amount).toFixed(2)}</td></tr>`
-          )
-          .join("")
+        )
+        .join("")
       : "";
 
     const gstRows = showPrice && order.gst_enabled
@@ -960,22 +983,23 @@ const OrderManager = ({
         <table style="width:100%;border-collapse:collapse;margin-bottom:10px;border:1px solid #000;">
           <thead>
             <tr>
-              <th style="border:1px solid #000;padding:4px;text-align:center;font-size:10px;width:5%;font-weight:bold;">Sr.</th>
-              <th style="border:1px solid #000;padding:4px;text-align:left;font-size:10px;width:25%;font-weight:bold;">Item Name</th>
-              <th style="border:1px solid #000;padding:4px;text-align:left;font-size:10px;width:12%;font-weight:bold;">Code</th>
-              <th style="border:1px solid #000;padding:4px;text-align:center;font-size:10px;width:10%;font-weight:bold;">Length</th>
-              <th style="border:1px solid #000;padding:4px;text-align:center;font-size:10px;width:8%;font-weight:bold;">Wt.(kg)</th>
-              <th style="border:1px solid #000;padding:4px;text-align:center;font-size:10px;width:8%;font-weight:bold;">Pcs</th>
-              <th style="border:1px solid #000;padding:4px;text-align:center;font-size:10px;width:12%;font-weight:bold;">Net Wt.(kg)</th>
+              <th style="border:1px solid #000;padding:4px;text-align:center;font-size:10px;width:4%;font-weight:bold;">Sr.</th>
+              <th style="border:1px solid #000;padding:4px;text-align:left;font-size:10px;width:24%;font-weight:bold;">Item Name</th>
+              <th style="border:1px solid #000;padding:4px;text-align:left;font-size:10px;width:11%;font-weight:bold;">Code</th>
+              <th style="border:1px solid #000;padding:4px;text-align:center;font-size:10px;width:9%;font-weight:bold;">Length</th>
+              <th style="border:1px solid #000;padding:4px;text-align:center;font-size:10px;width:7%;font-weight:bold;">Pcs</th>
+              <th style="border:1px solid #000;padding:4px;text-align:center;font-size:10px;width:10%;font-weight:bold;">Wt.(kg)</th>
+              <th style="border:1px solid #000;padding:4px;text-align:center;font-size:10px;width:11%;font-weight:bold;">Net Wt.(kg)</th>
               ${priceHeader}
             </tr>
           </thead>
           <tbody>${itemRows}</tbody>
           <tfoot>
             <tr>
-              <td colspan="5" style="border:1px solid #000;padding:3px;text-align:right;font-size:10px;font-weight:bold;">Total:</td>
+              <td colspan="4" style="border:1px solid #000;padding:3px;text-align:right;font-size:10px;font-weight:bold;">Total:</td>
               <td style="border:1px solid #000;padding:3px;text-align:center;font-size:10px;font-weight:bold;">${totalPcs} pcs</td>
-              <td style="border:1px solid #000;padding:3px;text-align:center;font-size:10px;font-weight:bold;">${totalNW.toFixed(2)} kg</td>
+              <td style="border:1px solid #000;padding:3px;text-align:center;font-size:10px;"></td>
+              <td style="border:1px solid #000;padding:3px;text-align:center;font-size:10px;font-weight:bold;">${totalNW.toFixed(3)} kg</td>
               ${subtotalCell}
             </tr>
           </tfoot>
@@ -1282,7 +1306,16 @@ const OrderManager = ({
                 </div>
 
 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                  <div>
+                    <Label htmlFor="order-date">Date</Label>
+                    <Input
+                      id="order-date"
+                      type="date"
+                      value={orderDate}
+                      onChange={(e) => setOrderDate(e.target.value)}
+                    />
+                  </div>
                   <div>
                     <Label htmlFor="color-code">Color Code</Label>
                     <Input
@@ -1437,7 +1470,25 @@ const OrderManager = ({
                     </div>
 
                     <div>
-                      <Label htmlFor="price">Price (₹)</Label>
+                      <Label htmlFor="rate-type-create">Rate Type</Label>
+                      <Select
+                        value={rateType}
+                        onValueChange={(v) => setRateType(v as "per_pc" | "per_kg")}
+                      >
+                        <SelectTrigger id="rate-type-create">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="per_kg">Rate / kg</SelectItem>
+                          <SelectItem value="per_pc">Rate / pc</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div>
+                      <Label htmlFor="price">
+                        {rateType === "per_kg" ? "Rate (₹/kg)" : "Rate (₹/pc)"}
+                      </Label>
                       <Input
                         id="price"
                         type="number"
@@ -1452,9 +1503,22 @@ const OrderManager = ({
                             }
                           }
                         }}
-                        placeholder="Price per piece"
+                        placeholder={rateType === "per_kg" ? "Price per kg" : "Price per piece"}
                         min="0"
                       />
+                      {pricePerPiece !== "" && pricePerPiece > 0 && pieces > 0 && (
+                        <p className="text-xs text-gray-500 mt-1">
+                          {rateType === "per_kg"
+                            ? (() => {
+                                const iw = itemWeight || selectedStock?.weight || 0;
+                                const nw = iw * pieces;
+                                return nw > 0
+                                  ? `Est. ₹${(Number(pricePerPiece) * nw).toFixed(2)} (${nw.toFixed(2)} kg × ₹${pricePerPiece}/kg)`
+                                  : "Enter weight to see estimate";
+                              })()
+                            : `Est. ₹${(Number(pricePerPiece) * pieces).toFixed(2)}`}
+                        </p>
+                      )}
                     </div>
 
                     <div className="flex items-end">
@@ -1527,7 +1591,7 @@ const OrderManager = ({
                           <Label htmlFor="gst-type">GST Type</Label>
                           <Select
                             value={gstType}
-                            onValueChange={(value: any) => setGstType(value)}
+                            onValueChange={(value) => setGstType(value as "CGST_SGST" | "IGST" | "UTGST")}
                           >
                             <SelectTrigger id="gst-type">
                               <SelectValue placeholder="Select type" />
@@ -1583,7 +1647,7 @@ const OrderManager = ({
                         <Label htmlFor="cost-type">Type</Label>
                         <Select
                           value={newCostType}
-                          onValueChange={(value: any) => setNewCostType(value)}
+                          onValueChange={(value) => setNewCostType(value as "add" | "discount")}
                         >
                           <SelectTrigger id="cost-type">
                             <SelectValue placeholder="Type" />
@@ -1843,7 +1907,16 @@ const OrderManager = ({
             </div>
 
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <div>
+                <Label htmlFor="edit-order-date">Date</Label>
+                <Input
+                  id="edit-order-date"
+                  type="date"
+                  value={orderDate}
+                  onChange={(e) => setOrderDate(e.target.value)}
+                />
+              </div>
               <div>
                 <Label htmlFor="edit-color-code">Color Code</Label>
                 <Input
@@ -1981,7 +2054,25 @@ const OrderManager = ({
                 </div>
 
                 <div>
-                  <Label htmlFor="edit-price">Price (₹)</Label>
+                  <Label htmlFor="rate-type-edit">Rate Type</Label>
+                  <Select
+                    value={rateType}
+                    onValueChange={(v) => setRateType(v as "per_pc" | "per_kg")}
+                  >
+                    <SelectTrigger id="rate-type-edit">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="per_kg">Rate / kg</SelectItem>
+                      <SelectItem value="per_pc">Rate / pc</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div>
+                  <Label htmlFor="edit-price">
+                    {rateType === "per_kg" ? "Rate (₹/kg)" : "Rate (₹/pc)"}
+                  </Label>
                   <Input
                     id="edit-price"
                     type="number"
@@ -1996,9 +2087,22 @@ const OrderManager = ({
                         }
                       }
                     }}
-                    placeholder="Price per piece"
+                    placeholder={rateType === "per_kg" ? "Price per kg" : "Price per piece"}
                     min="0"
                   />
+                  {pricePerPiece !== "" && pricePerPiece > 0 && pieces > 0 && (
+                    <p className="text-xs text-gray-500 mt-1">
+                      {rateType === "per_kg"
+                        ? (() => {
+                            const iw = itemWeight || selectedStock?.weight || 0;
+                            const nw = iw * pieces;
+                            return nw > 0
+                              ? `Est. ₹${(Number(pricePerPiece) * nw).toFixed(2)} (${nw.toFixed(2)} kg × ₹${pricePerPiece}/kg)`
+                              : "Enter weight to see estimate";
+                          })()
+                        : `Est. ₹${(Number(pricePerPiece) * pieces).toFixed(2)}`}
+                    </p>
+                  )}
                 </div>
 
                 <div className="flex items-end">
@@ -2069,7 +2173,7 @@ const OrderManager = ({
                       <Label htmlFor="edit-gst-type">GST Type</Label>
                       <Select
                         value={gstType}
-                        onValueChange={(value: any) => setGstType(value)}
+                        onValueChange={(value) => setGstType(value as "CGST_SGST" | "IGST" | "UTGST")}
                       >
                         <SelectTrigger id="edit-gst-type">
                           <SelectValue placeholder="Select type" />
@@ -2125,7 +2229,7 @@ const OrderManager = ({
                     <Label htmlFor="edit-cost-type">Type</Label>
                     <Select
                       value={newCostType}
-                      onValueChange={(value: any) => setNewCostType(value)}
+                      onValueChange={(value) => setNewCostType(value as "add" | "discount")}
                     >
                       <SelectTrigger id="edit-cost-type">
                         <SelectValue placeholder="Type" />
