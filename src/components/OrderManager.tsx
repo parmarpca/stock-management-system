@@ -962,7 +962,7 @@ const OrderManager = ({
           ${companySettings ? `<h1 style="margin:0;font-size:24px;font-weight:bold;">${companySettings.company_name}</h1>
           <p style="margin:2px 0;font-size:11px;">${companySettings.company_address}</p>
           <p style="margin:2px 0;font-size:11px;">GSTIN: ${companySettings.company_gstin}</p>` : ""}
-          <h2 style="margin:10px 0 0;font-size:18px;font-weight:bold;text-decoration:underline;">ORDER INVOICE</h2>
+          <h2 style="margin:10px 0 0;font-size:18px;font-weight:bold;text-decoration:underline;">Delivery Details</h2>
         </div>
         <div style="display:flex;justify-content:space-between;margin-bottom:15px;">
           <div style="width:48%;">
@@ -1510,12 +1510,12 @@ const OrderManager = ({
                         <p className="text-xs text-gray-500 mt-1">
                           {rateType === "per_kg"
                             ? (() => {
-                                const iw = itemWeight || selectedStock?.weight || 0;
-                                const nw = iw * pieces;
-                                return nw > 0
-                                  ? `Est. ₹${(Number(pricePerPiece) * nw).toFixed(2)} (${nw.toFixed(2)} kg × ₹${pricePerPiece}/kg)`
-                                  : "Enter weight to see estimate";
-                              })()
+                              const iw = itemWeight || selectedStock?.weight || 0;
+                              const nw = iw * pieces;
+                              return nw > 0
+                                ? `Est. ₹${(Number(pricePerPiece) * nw).toFixed(2)} (${nw.toFixed(2)} kg × ₹${pricePerPiece}/kg)`
+                                : "Enter weight to see estimate";
+                            })()
                             : `Est. ₹${(Number(pricePerPiece) * pieces).toFixed(2)}`}
                         </p>
                       )}
@@ -2094,12 +2094,12 @@ const OrderManager = ({
                     <p className="text-xs text-gray-500 mt-1">
                       {rateType === "per_kg"
                         ? (() => {
-                            const iw = itemWeight || selectedStock?.weight || 0;
-                            const nw = iw * pieces;
-                            return nw > 0
-                              ? `Est. ₹${(Number(pricePerPiece) * nw).toFixed(2)} (${nw.toFixed(2)} kg × ₹${pricePerPiece}/kg)`
-                              : "Enter weight to see estimate";
-                          })()
+                          const iw = itemWeight || selectedStock?.weight || 0;
+                          const nw = iw * pieces;
+                          return nw > 0
+                            ? `Est. ₹${(Number(pricePerPiece) * nw).toFixed(2)} (${nw.toFixed(2)} kg × ₹${pricePerPiece}/kg)`
+                            : "Enter weight to see estimate";
+                        })()
                         : `Est. ₹${(Number(pricePerPiece) * pieces).toFixed(2)}`}
                     </p>
                   )}
