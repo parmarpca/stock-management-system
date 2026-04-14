@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { stockLength, stockLengthOptions } from '@/constants/config';
+import { stockLength } from '@/constants/config';
 
 interface Stock {
   id: string;
@@ -41,6 +41,8 @@ interface OrderFormProps {
 }
 
 const OrderForm = ({ stocks, customers, setCustomers, onOrderCreate }: OrderFormProps) => {
+  const dynamicLengthOptions = Array.from(new Set(stocks.map(s => s.length).filter(Boolean))).sort();
+
   const [customerName, setCustomerName] = useState('');
   const [colorCode, setColorCode] = useState('');
   const [length, setLength] = useState<stockLength>('16ft');
@@ -152,7 +154,7 @@ const OrderForm = ({ stocks, customers, setCustomers, onOrderCreate }: OrderForm
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                {stockLengthOptions.map((len) => (
+                {dynamicLengthOptions.map((len) => (
                   <SelectItem key={len} value={len}>
                     {len}
                   </SelectItem>
