@@ -31,7 +31,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { supabase } from "@/integrations/supabase/client";
-import { stockLength, stockLengthOptions } from "@/constants/config";
+import { stockLength } from "@/constants/config";
 
 interface Stock {
   id: string;
@@ -78,6 +78,10 @@ const StockOverview = ({
   onStockDelete,
   onRefresh,
 }: StockOverviewProps) => {
+  // Use dynamically generated options based on database plus standard defaults in case it's empty
+  const dbOptions = Array.from(new Set(stocks.map(s => s.length).filter(Boolean))).sort();
+  const dynamicLengthOptions = dbOptions.length > 0 ? dbOptions : ['12ft', '14ft', '16ft'];
+
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isHistoryDialogOpen, setIsHistoryDialogOpen] = useState(false);
   const [isAddingStock, setIsAddingStock] = useState(false);
@@ -707,19 +711,29 @@ const StockOverview = ({
                 {/* Stock Length */}
                 <div>
                   <Label htmlFor="stock-length">Stock Length</Label>
-                  <select
+                  <Input
                     id="stock-length"
-                    title="Select stock length"
-                    className="w-full border rounded-md py-2 px-3"
+                    list="stock-length-options"
+                    className="w-full"
                     value={newStock.length}
-                    onChange={(e) => handleLengthChange(e.target.value as stockLength)}
-                  >
-                    {stockLengthOptions.map((length) => (
-                      <option key={length} value={length}>
-                        {length}
-                      </option>
+                    onChange={(e) => handleLengthChange(e.target.value)}
+                    onBlur={() => {
+                      if (newStock.length && !newStock.length.toLowerCase().endsWith("ft")) {
+                        if (newStock.length.toLowerCase().endsWith("f")) {
+                          handleLengthChange(newStock.length.trim() + "t");
+                        } else {
+                          handleLengthChange(newStock.length.trim() + "ft");
+                        }
+                      }
+                    }}
+                    placeholder="e.g. 16"
+                    autoComplete="off"
+                  />
+                  <datalist id="stock-length-options">
+                    {dynamicLengthOptions.map((length) => (
+                      <option key={length} value={length} />
                     ))}
-                  </select>
+                  </datalist>
                   {existingStock && (
                     <p className="text-xs text-amber-600 mt-1">
                       ⚠️ Stock with code <strong>{existingStock.code}</strong> and length <strong>{existingStock.length}</strong> already exists ({existingStock.quantity} pcs). Adding will increase its quantity.
@@ -859,10 +873,10 @@ const StockOverview = ({
                 {/* Stock Length */}
                 <div>
                   <Label htmlFor="edit-stock-length">Stock Length</Label>
-                  <select
+                  <Input
                     id="edit-stock-length"
-                    title="Select stock length"
-                    className="w-full border rounded-md py-2 px-3"
+                    list="edit-stock-length-options"
+                    className="w-full"
                     value={newStock.length}
                     onChange={(e) =>
                       setNewStock((prev) => ({
@@ -870,13 +884,22 @@ const StockOverview = ({
                         length: e.target.value as stockLength,
                       }))
                     }
-                  >
-                    {stockLengthOptions.map((length) => (
-                      <option key={length} value={length}>
-                        {length}
-                      </option>
+                    onBlur={() => {
+                      if (newStock.length && !newStock.length.toLowerCase().endsWith("ft")) {
+                        setNewStock((prev) => ({
+                          ...prev,
+                          length: (prev.length.trim() + "ft") as stockLength,
+                        }));
+                      }
+                    }}
+                    placeholder="e.g. 16"
+                    autoComplete="off"
+                  />
+                  <datalist id="edit-stock-length-options">
+                    {dynamicLengthOptions.map((length) => (
+                      <option key={length} value={length} />
                     ))}
-                  </select>
+                  </datalist>
                 </div>
 
                 {/* Stock Weight */}

@@ -37,7 +37,6 @@ import { Switch } from "@/components/ui/switch";
 import { SuccessDialog } from "@/components/ui/success-dialog";
 import { Stock, Customer, Order, OrderItem, OrderAdditionalCost } from "@/hooks/useStockData";
 import { useCompanySettings } from "@/hooks/useCompanySettings";
-import { stockLengthOptions } from "@/constants/config";
 import { cn } from "@/lib/utils";
 
 interface OrderManagerProps {
@@ -57,7 +56,8 @@ interface OrderManagerProps {
     additionalCosts?: Omit<OrderAdditionalCost, "id" | "order_id">[],
     customerAddress?: string,
     customerGstin?: string,
-    orderDate?: string
+    orderDate?: string,
+    siteName?: string
   ) => Promise<Order>;
   onOrderUpdate: (
     orderId: string,
@@ -72,7 +72,8 @@ interface OrderManagerProps {
     showUnitPrice?: boolean,
     additionalCosts?: Omit<OrderAdditionalCost, "id" | "order_id">[],
     customerAddress?: string,
-    customerGstin?: string
+    customerGstin?: string,
+    siteName?: string
   ) => Promise<Order>;
   onOrderDelete: (orderId: string) => Promise<void>;
   onOrderHide: (orderId: string) => Promise<void>;
@@ -116,6 +117,8 @@ const OrderManager = ({
 }: OrderManagerProps) => {
   const { companySettings } = useCompanySettings();
 
+  const dynamicLengthOptions = Array.from(new Set(stocks.map(s => s.length).filter(Boolean))).sort();
+
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isCreatingOrder, setIsCreatingOrder] = useState(false);
@@ -152,6 +155,7 @@ const OrderManager = ({
   const [mobileNumber, setMobileNumber] = useState("");
   const [vehicleNumber, setVehicleNumber] = useState("");
   const [agentName, setAgentName] = useState("");
+  const [siteName, setSiteName] = useState("");
   const [orderDate, setOrderDate] = useState(new Date().toISOString().split("T")[0]);
   const [pricePerPiece, setPricePerPiece] = useState<number | "">("");
   const [rateType, setRateType] = useState<"per_pc" | "per_kg">("per_kg");
@@ -438,6 +442,7 @@ const OrderManager = ({
     setColorCode("");
     setVehicleNumber("");
     setAgentName("");
+    setSiteName("");
     setCustomerAddress("");
     setCustomerGstin("");
     setMobileNumber("");
@@ -549,7 +554,8 @@ const OrderManager = ({
         additionalCosts,
         customerAddress,
         customerGstin,
-        orderDate
+        orderDate,
+        siteName
       );
 
       // Compute totals locally so print is correct immediately (DB RPC runs async)
@@ -583,6 +589,7 @@ const OrderManager = ({
         color_code: colorCode,
         vehicle_number: vehicleNumber,
         agent_name: agentName,
+        site_name: siteName,
         gst_enabled: gstEnabled,
         gst_type: gstType,
         gst_percentage: gstPercentage,
@@ -626,6 +633,7 @@ const OrderManager = ({
     setColorCode(order.color_code || "");
     setVehicleNumber(order.vehicle_number || "");
     setAgentName(order.agent_name || "");
+    setSiteName(order.site_name || "");
     setOrderDate(order.order_date || new Date().toISOString().split("T")[0]);
     setGstEnabled(order.gst_enabled || false);
     setGstType(order.gst_type || "CGST_SGST");
@@ -730,7 +738,8 @@ const OrderManager = ({
         showUnitPrice,
         additionalCosts,
         customerAddress,
-        customerGstin
+        customerGstin,
+        siteName
       );
       resetForm();
       setIsEditDialogOpen(false);
@@ -881,8 +890,8 @@ const OrderManager = ({
     const showPrice = order.show_unit_price;
     const colSpan = showPrice ? 8 : 7;
     const priceHeader = showPrice
-      ? `<th style="border:1px solid #000;padding:4px;text-align:center;font-size:10px;width:10%;font-weight:bold;">Rate</th>
-         <th style="border:1px solid #000;padding:4px;text-align:center;font-size:10px;width:10%;font-weight:bold;">Amount</th>`
+      ? `<th style="border:1px solid #000;padding:4px;text-align:center;font-size:12px;width:12%;font-weight:bold;">Rate</th>
+         <th style="border:1px solid #000;padding:4px;text-align:center;font-size:12px;width:12%;font-weight:bold;">Amount</th>`
       : "";
 
     const itemRows = (order.order_items ?? [])
@@ -894,22 +903,21 @@ const OrderManager = ({
         const amount = rt === "per_kg" ? rate * nw : rate * item.pieces_used;
         const rateLabel = rt === "per_kg" ? `₹${rate.toFixed(2)}/kg` : `₹${rate.toFixed(2)}/pc`;
         const priceCell = showPrice
-          ? `<td style="border:1px solid #000;padding:3px;text-align:center;font-size:10px;">${rateLabel}</td>
-             <td style="border:1px solid #000;padding:3px;text-align:center;font-size:10px;">₹${amount.toFixed(2)}</td>`
+          ? `<td style="border:1px solid #000;padding:4px;text-align:center;font-size:12px;">${rateLabel}</td>
+             <td style="border:1px solid #000;padding:4px;text-align:center;font-size:12px;">₹${amount.toFixed(2)}</td>`
           : "";
         return `
           <tr>
-            <td style="border:1px solid #000;padding:3px;text-align:center;font-size:10px;">${index + 1}</td>
-            <td style="border:1px solid #000;padding:3px;font-size:10px;">${item.stock_name}</td>
-            <td style="border:1px solid #000;padding:3px;font-size:10px;">${item.stock_code || "N/A"}</td>
-            <td style="border:1px solid #000;padding:3px;text-align:center;font-size:10px;">${item.stock_length || "N/A"}</td>
-            <td style="border:1px solid #000;padding:3px;text-align:center;font-size:10px;">${item.pieces_used}</td>
-            <td style="border:1px solid #000;padding:3px;text-align:center;font-size:10px;">${iw ? iw.toFixed(3) : "-"}</td>
-            <td style="border:1px solid #000;padding:3px;text-align:center;font-size:10px;">${nw > 0 ? nw.toFixed(3) : "-"}</td>
+            <td style="border:1px solid #000;padding:4px;text-align:center;font-size:12px;">${index + 1}</td>
+            <td style="border:1px solid #000;padding:4px;font-size:12px;">${item.stock_name}</td>
+            <td style="border:1px solid #000;padding:4px;font-size:12px;">${item.stock_code || "N/A"}</td>
+            <td style="border:1px solid #000;padding:4px;text-align:center;font-size:12px;">${item.stock_length || "N/A"}</td>
+            <td style="border:1px solid #000;padding:4px;text-align:center;font-size:12px;">${item.pieces_used}</td>
+            <td style="border:1px solid #000;padding:4px;text-align:center;font-size:12px;">${nw > 0 ? nw.toFixed(3) : "-"}</td>
             ${priceCell}
           </tr>`;
       })
-      .join("") || `<tr><td colspan="${colSpan}" style="border:1px solid #000;padding:3px;text-align:center;font-size:10px;">No items</td></tr>`;
+      .join("") || `<tr><td colspan="${colSpan}" style="border:1px solid #000;padding:4px;text-align:center;font-size:12px;">No items</td></tr>`;
 
     const totalPcs = (order.order_items ?? []).reduce((s, i) => s + i.pieces_used, 0);
     const totalNW = (order.order_items ?? []).reduce((s, i) => s + (i.weight || 0) * i.pieces_used, 0);
@@ -966,7 +974,8 @@ const OrderManager = ({
         </div>
         <div style="display:flex;justify-content:space-between;margin-bottom:15px;">
           <div style="width:48%;">
-            <h3 style="margin:0 0 5px;font-size:13px;font-weight:bold;">Customer Details:</h3>
+            ${order.site_name ? `<p style="margin:2px 0;font-size:13px;font-weight:bold;"><strong>Site Name:</strong> ${order.site_name}</p>` : `<div style="margin-top:4px;font-size:11px;display:flex;align-items:center;"><strong>Site Name:</strong> <div style="border:1px solid #000;width:100px;height:12px;margin-left:4px;"></div></div>`}
+            <h3 style="margin:7px 0 5px;font-size:13px;font-weight:bold;">Customer Details:</h3>
             <p style="margin:2px 0;font-size:11px;"><strong>Name:</strong> ${order.customer_name}</p>
             ${order.customer_address ? `<p style="margin:2px 0;font-size:11px;"><strong>Address:</strong> ${order.customer_address}</p>` : ""}
             ${order.customer_gstin ? `<p style="margin:2px 0;font-size:11px;"><strong>GSTIN:</strong> ${order.customer_gstin}</p>` : ""}
@@ -978,18 +987,17 @@ const OrderManager = ({
             ${order.color_code ? `<p style="margin:2px 0;font-size:11px;"><strong>Color:</strong> ${order.color_code}</p>` : ""}
             ${order.vehicle_number ? `<p style="margin:2px 0;font-size:11px;"><strong>Vehicle:</strong> ${order.vehicle_number}</p>` : ""}
             ${order.agent_name ? `<p style="margin:2px 0;font-size:11px;"><strong>Agent:</strong> ${order.agent_name}</p>` : ""}
-          </div>
+            </div>
         </div>
         <table style="width:100%;border-collapse:collapse;margin-bottom:10px;border:1px solid #000;">
           <thead>
             <tr>
-              <th style="border:1px solid #000;padding:4px;text-align:center;font-size:10px;width:4%;font-weight:bold;">Sr.</th>
-              <th style="border:1px solid #000;padding:4px;text-align:left;font-size:10px;width:24%;font-weight:bold;">Item Name</th>
-              <th style="border:1px solid #000;padding:4px;text-align:left;font-size:10px;width:11%;font-weight:bold;">Code</th>
-              <th style="border:1px solid #000;padding:4px;text-align:center;font-size:10px;width:9%;font-weight:bold;">Length</th>
-              <th style="border:1px solid #000;padding:4px;text-align:center;font-size:10px;width:7%;font-weight:bold;">Pcs</th>
-              <th style="border:1px solid #000;padding:4px;text-align:center;font-size:10px;width:10%;font-weight:bold;">Wt.(kg)</th>
-              <th style="border:1px solid #000;padding:4px;text-align:center;font-size:10px;width:11%;font-weight:bold;">Net Wt.(kg)</th>
+              <th style="border:1px solid #000;padding:4px;text-align:center;font-size:12px;width:4%;font-weight:bold;">Sr.</th>
+              <th style="border:1px solid #000;padding:4px;text-align:left;font-size:12px;width:30%;font-weight:bold;">Item Name</th>
+              <th style="border:1px solid #000;padding:4px;text-align:left;font-size:12px;width:8%;font-weight:bold;">Code</th>
+              <th style="border:1px solid #000;padding:4px;text-align:center;font-size:12px;width:10%;font-weight:bold;">Length</th>
+              <th style="border:1px solid #000;padding:4px;text-align:center;font-size:12px;width:6%;font-weight:bold;">Pcs</th>
+              <th style="border:1px solid #000;padding:4px;text-align:center;font-size:12px;width:10%;font-weight:bold;">Net Wt.(kg)</th>
               ${priceHeader}
             </tr>
           </thead>
@@ -1072,13 +1080,13 @@ const OrderManager = ({
           <div style="margin-bottom: 8px; page-break-inside: avoid;">
             <div style="background-color: #f0f0f0; padding: 3px; border: 1px solid #000; font-weight: bold; font-size: 16px;">
               Order #${index + 1} - ${order.customer_name} - ${order.order_date
-            }${order.color_code ? ` - Color: ${order.color_code}` : ""}
+            }${order.color_code ? ` - Color: ${order.color_code}` : ""}${order.site_name ? ` - Site Name: ${order.site_name}` : ` <div style="display:inline-block; border:1px solid #000; width:100px; height:14px; margin-left: 5px;"></div>`}
             </div>
             <table style="width: 100%; border-collapse: collapse; border: 1px solid #000; margin-bottom: 4px;">
               <thead>
                 <tr style="background-color: #f8f8f8;">
-                  <th style="border: 1px solid #000; padding: 2px; text-align: left; font-weight: bold; font-size: 16px; width: 15%;">Code</th>
-                  <th style="border: 1px solid #000; padding: 2px; text-align: left; font-weight: bold; font-size: 16px; width: 45%;">Item</th>
+                  <th style="border: 1px solid #000; padding: 2px; text-align: left; font-weight: bold; font-size: 16px; width: 8%;">Code</th>
+                  <th style="border: 1px solid #000; padding: 2px; text-align: left; font-weight: bold; font-size: 16px; width: 52%;">Item</th>
                   <th style="border: 1px solid #000; padding: 2px; text-align: center; font-weight: bold; font-size: 16px; width: 20%;">Len</th>
                   <th style="border: 1px solid #000; padding: 2px; text-align: center; font-weight: bold; font-size: 16px; width: 20%;">Qty</th>
                 </tr>
@@ -1353,6 +1361,16 @@ const OrderManager = ({
                       autoComplete="off"
                     />
                   </div>
+                  <div>
+                    <Label htmlFor="site-name">Site Name</Label>
+                    <Input
+                      id="site-name"
+                      value={siteName}
+                      onChange={(e) => setSiteName(e.target.value)}
+                      placeholder="Enter site name"
+                      autoComplete="off"
+                    />
+                  </div>
                 </div>
 
                 {/* Add Items Section */}
@@ -1375,7 +1393,7 @@ const OrderManager = ({
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="all">All lengths</SelectItem>
-                          {stockLengthOptions.map((l) => (
+                          {dynamicLengthOptions.map((l) => (
                             <SelectItem key={l} value={l}>{l}</SelectItem>
                           ))}
                         </SelectContent>
@@ -1969,7 +1987,7 @@ const OrderManager = ({
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="all">All lengths</SelectItem>
-                      {stockLengthOptions.map((l) => (
+                      {dynamicLengthOptions.map((l) => (
                         <SelectItem key={l} value={l}>{l}</SelectItem>
                       ))}
                     </SelectContent>

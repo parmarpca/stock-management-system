@@ -44,7 +44,7 @@ import {
 import { useCompanySettings } from "@/hooks/useCompanySettings";
 import { cn } from "@/lib/utils";
 import { COMPANY_INFO } from "@/constants/company";
-import { stockLength, stockLengthOptions } from "@/constants/config";
+import { stockLength } from "@/constants/config";
 
 interface QuotationManagerProps {
   stocks: Stock[];
@@ -86,8 +86,9 @@ const QuotationManager = ({
   onQuotationCreate,
   onQuotationUpdate,
   onQuotationDelete,
-  fetchQuotations,
 }: QuotationManagerProps) => {
+  const dynamicLengthOptions = Array.from(new Set(stocks.map(s => s.length).filter(Boolean))).sort();
+
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isCreatingQuotation, setIsCreatingQuotation] = useState(false);
@@ -1147,7 +1148,7 @@ const QuotationManager = ({
                               <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
-                              {stockLengthOptions.map((len) => (
+                              {dynamicLengthOptions.map((len) => (
                                 <SelectItem key={len} value={len}>
                                   {len}
                                 </SelectItem>
@@ -1174,7 +1175,7 @@ const QuotationManager = ({
                               </SelectTrigger>
                               <SelectContent>
                                 <SelectItem value="all">All lengths</SelectItem>
-                                {stockLengthOptions.map((l) => (
+                                {dynamicLengthOptions.map((l) => (
                                   <SelectItem key={l} value={l}>{l}</SelectItem>
                                 ))}
                               </SelectContent>
@@ -2039,7 +2040,7 @@ const QuotationManager = ({
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                          {stockLengthOptions.map((len) => (
+                          {dynamicLengthOptions.map((len) => (
                             <SelectItem key={len} value={len}>
                               {len}
                             </SelectItem>
@@ -2066,7 +2067,7 @@ const QuotationManager = ({
                           </SelectTrigger>
                           <SelectContent>
                             <SelectItem value="all">All lengths</SelectItem>
-                            {stockLengthOptions.map((l) => (
+                            {dynamicLengthOptions.map((l) => (
                               <SelectItem key={l} value={l}>{l}</SelectItem>
                             ))}
                           </SelectContent>

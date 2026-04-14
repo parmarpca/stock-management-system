@@ -67,6 +67,7 @@ export interface Order {
   order_items?: OrderItem[];
   order_additional_costs?: OrderAdditionalCost[];
   is_hidden?: boolean;
+  site_name?: string;
 }
 
 export const useStockData = () => {
@@ -161,6 +162,7 @@ export const useStockData = () => {
           rounding_adjustment?: number;
           show_unit_price?: boolean;
           is_hidden?: boolean;
+          site_name?: string;
           customers?: { name?: string; address?: string; gstin_number?: string };
           order_items?: (OrderItem & { stocks?: { name?: string; code?: string; length?: string } })[];
           order_additional_costs?: OrderAdditionalCost[];
@@ -269,7 +271,8 @@ export const useStockData = () => {
     additionalCosts?: Omit<OrderAdditionalCost, "id" | "order_id">[],
     customerAddress?: string,
     customerGstin?: string,
-    orderDate?: string
+    orderDate?: string,
+    siteName?: string
   ) => {
     try {
       // Create the order
@@ -284,6 +287,7 @@ export const useStockData = () => {
           gst_type: gstType,
           gst_percentage: gstPercentage,
           show_unit_price: showUnitPrice,
+          site_name: siteName,
           ...(orderDate ? { order_date: orderDate } : {}),
         }])
         .select()
@@ -484,7 +488,8 @@ export const useStockData = () => {
     showUnitPrice: boolean = true,
     additionalCosts?: Omit<OrderAdditionalCost, "id" | "order_id">[],
     customerAddress?: string,
-    customerGstin?: string
+    customerGstin?: string,
+    siteName?: string
   ) => {
     try {
       // First get existing order items to restore stock quantities
@@ -527,7 +532,8 @@ export const useStockData = () => {
           gst_enabled: gstEnabled,
           gst_type: gstType,
           gst_percentage: gstPercentage,
-          show_unit_price: showUnitPrice
+          show_unit_price: showUnitPrice,
+          site_name: siteName
         })
         .eq("id", orderId);
 
