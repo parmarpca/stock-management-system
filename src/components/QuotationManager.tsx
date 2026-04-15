@@ -146,7 +146,7 @@ const QuotationManager = ({
   const [isManualItem, setIsManualItem] = useState(false);
   const [manualStockName, setManualStockName] = useState("");
   const [manualStockCode, setManualStockCode] = useState("");
-  const [manualLength, setManualLength] = useState<stockLength>("16ft");
+  const [manualLength, setManualLength] = useState<stockLength>("");
 
   // Additional cost states
   const [costLabel, setCostLabel] = useState("");
@@ -501,7 +501,7 @@ const QuotationManager = ({
     setIsManualItem(false);
     setManualStockName("");
     setManualStockCode("");
-    setManualLength("16ft");
+    setManualLength("");
     setCostLabel("");
     setCostType("add");
     setCostAmount(0);
@@ -620,262 +620,146 @@ const QuotationManager = ({
   };
 
   const handlePrintQuotation = (quotation: Quotation, showPrices: boolean) => {
-    // Calculate total weight
-    const totalWeight =
-      quotation.quotation_items?.reduce((sum, item) => {
-        const itemWeight = item.weight || 0;
-        const netWeight = itemWeight * item.pieces;
-        return sum + netWeight;
-      }, 0) || 0;
+    const colSpan = showPrices ? 8 : 7;
+    const priceHeader = showPrices
+      ? `<th style="border:1px solid #000;padding:4px;text-align:center;font-size:12px;width:12%;font-weight:bold;">Rate</th>
+         <th style="border:1px solid #000;padding:4px;text-align:center;font-size:12px;width:12%;font-weight:bold;">Amount</th>`
+      : "";
 
-    const printContent = `
-      <div style="font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 15px; background: white; color: #000; font-size: 12px;">
-        <!-- Company Header -->
-        <div style="text-align: center; margin-bottom: 20px; border-bottom: 1px solid #000; padding-bottom: 10px;">
-          <h1 style="margin: 0; margin-bottom: 2px; font-size: 20px; font-weight: bold;">${companyInfo.name
-      }</h1>
-          <p style="margin: 0; margin-bottom: 2px; font-size: 12px;">${companyInfo.address
-      }</p>
-          <p style="margin: 0; margin-bottom: 8px; font-size: 11px;">GSTIN: ${companyInfo.gstin
-      }</p>
-          <h2 style="margin: 0; font-size: 16px; font-weight: bold;">QUOTATION</h2>
-        </div>
-        
-        <!-- Customer and Quotation Details -->
-        <div style="display: flex; justify-content: space-between; margin-bottom: 15px;">
-          <div style="width: 48%;">
-            <h3 style="margin: 0; margin-bottom: 5px; font-size: 13px; font-weight: bold;">Customer Details:</h3>
-            <p style="margin: 2px 0; font-size: 11px;"><strong>Name:</strong> ${quotation.customer_name
-      }</p>
-            ${quotation.customer_address
-        ? `<p style="margin: 2px 0; font-size: 11px;"><strong>Address:</strong> ${quotation.customer_address}</p>`
-        : ""
-      }
-            ${quotation.customer_gstin
-        ? `<p style="margin: 2px 0; font-size: 11px;"><strong>GSTIN:</strong> ${quotation.customer_gstin}</p>`
-        : ""
-      }
-          </div>
-          <div style="width: 48%; text-align: right;">
-            <h3 style="margin: 0; margin-bottom: 5px; font-size: 13px; font-weight: bold;">Quotation Details:</h3>
-            <p style="margin: 2px 0; font-size: 11px;"><strong>Quotation No:</strong> #${quotation.quotation_number
-      }</p>
-            <p style="margin: 2px 0; font-size: 11px;"><strong>Date:</strong> ${new Date(
-        quotation.quotation_date
-      ).toLocaleDateString()}</p>
-          </div>
-        </div>
+    const itemRows = (quotation.quotation_items ?? [])
+      .map((item, index) => {
+        const iw = item.weight || 0;
+        const nw = iw * item.pieces;
+        const rt = item.rate_type ?? "per_kg";
+        const rate = Number(item.price_per_piece ?? 0);
+        const amount = rt === "per_kg" ? rate * nw : rate * item.pieces;
+        const rateLabel = rt === "per_kg" ? `₹${rate.toFixed(2)}/kg` : `₹${rate.toFixed(2)}/pc`;
+        const priceCell = showPrices
+          ? `<td style="border:1px solid #000;padding:4px;text-align:center;font-size:12px;">${rateLabel}</td>
+             <td style="border:1px solid #000;padding:4px;text-align:center;font-size:12px;">₹${amount.toFixed(2)}</td>`
+          : "";
+        return `
+          <tr>
+            <td style="border:1px solid #000;padding:4px;text-align:center;font-size:12px;">${index + 1}</td>
+            <td style="border:1px solid #000;padding:4px;font-size:12px;">${item.stock_name}</td>
+            <td style="border:1px solid #000;padding:4px;font-size:12px;">${item.stock_code || "N/A"}</td>
+            <td style="border:1px solid #000;padding:4px;text-align:center;font-size:12px;">${item.length || "-"}</td>
+            <td style="border:1px solid #000;padding:4px;text-align:center;font-size:12px;">${item.pieces}</td>
+            <td style="border:1px solid #000;padding:4px;text-align:center;font-size:12px;">${nw > 0 ? nw.toFixed(3) : "-"}</td>
+            ${priceCell}
+          </tr>`;
+      })
+      .join("") || `<tr><td colspan="${colSpan}" style="border:1px solid #000;padding:4px;text-align:center;font-size:12px;">No items</td></tr>`;
 
-        <!-- Items Table -->
-        <table style="width: 100%; border-collapse: collapse; margin-bottom: 10px; border: 1px solid #000;">
+    const totalPcs = (quotation.quotation_items ?? []).reduce((s, i) => s + i.pieces, 0);
+    const totalNW = (quotation.quotation_items ?? []).reduce((s, i) => s + (i.weight || 0) * i.pieces, 0);
+    const subtotalCell = showPrices
+      ? `<td colspan="2" style="border:1px solid #000;padding:3px;text-align:center;font-size:10px;font-weight:bold;">₹${quotation.subtotal?.toFixed(2) ?? "0.00"}</td>`
+      : "";
+
+    const additionalCostRows = showPrices
+      ? (quotation.quotation_additional_costs ?? [])
+        .map(
+          (c) =>
+            `<tr><td style="padding:3px;border-bottom:1px solid #eaeaea;">${c.label}</td>
+               <td style="padding:3px;border-bottom:1px solid #eaeaea;text-align:right;">${c.type === "discount" ? "-" : "+"}₹${Number(c.amount).toFixed(2)}</td></tr>`
+        )
+        .join("")
+      : "";
+
+    const gstRows = showPrices && quotation.gst_enabled
+      ? `<tr><td style="padding:3px;border-bottom:1px solid #eaeaea;font-weight:bold;">Subtotal</td>
+           <td style="padding:3px;border-bottom:1px solid #eaeaea;text-align:right;font-weight:bold;">₹${quotation.raw_total?.toFixed(2) ?? "0.00"}</td></tr>
+         <tr><td style="padding:3px;border-bottom:1px solid #eaeaea;">GST (${quotation.gst_percentage ?? 0}%)</td>
+           <td style="padding:3px;border-bottom:1px solid #eaeaea;text-align:right;">₹${quotation.gst_amount?.toFixed(2) ?? "0.00"}</td></tr>`
+      : "";
+
+    const roundRow = showPrices && quotation.rounding_adjustment
+      ? `<tr><td style="padding:3px;border-bottom:1px solid #eaeaea;">Round Off</td>
+           <td style="padding:3px;border-bottom:1px solid #eaeaea;text-align:right;">${quotation.rounding_adjustment > 0 ? "+" : ""}₹${quotation.rounding_adjustment.toFixed(2)}</td></tr>`
+      : "";
+
+    const totalsBlock = showPrices
+      ? `<div style="width:40%;float:right;margin-top:10px;">
+           <table style="width:100%;border-collapse:collapse;font-size:11px;">
+             ${additionalCostRows}${gstRows}${roundRow}
+             <tr><td style="padding:5px 3px;font-weight:bold;border-top:2px solid #000;">Grand Total</td>
+               <td style="padding:5px 3px;font-weight:bold;text-align:right;border-top:2px solid #000;">₹${quotation.total_amount?.toFixed(2) ?? "0.00"}</td></tr>
+           </table>
+           <div style="clear:both;"></div>
+         </div>
+         <div style="clear:both;"></div>`
+      : "";
+
+    const html = `<!DOCTYPE html><html><head><title>Quotation - ${quotation.customer_name}</title>
+      <style>
+        @media print { body{margin:0} @page{size:A4;margin:10mm} button{display:none} }
+        body{font-family:Arial,sans-serif;background:#fff;color:#000;font-size:12px;}
+        table{page-break-inside:avoid;}
+      </style></head><body>
+      <div style="max-width:800px;margin:0 auto;padding:15px;">
+        <div style="text-align:center;margin-bottom:20px;border-bottom:1px solid #000;padding-bottom:10px;">
+          ${companyInfo ? `<h1 style="margin:0;font-size:24px;font-weight:bold;">${companyInfo.name}</h1>
+          <p style="margin:2px 0;font-size:11px;">${companyInfo.address}</p>
+          <p style="margin:2px 0;font-size:11px;">GSTIN: ${companyInfo.gstin}</p>` : ""}
+          <h2 style="margin:10px 0 0;font-size:18px;font-weight:bold;text-decoration:underline;">QUOTATION</h2>
+        </div>
+        <div style="display:flex;justify-content:space-between;margin-bottom:15px;">
+          <div style="width:48%;">
+            <h3 style="margin:7px 0 5px;font-size:13px;font-weight:bold;">Customer Details:</h3>
+            <p style="margin:2px 0;font-size:11px;"><strong>Name:</strong> ${quotation.customer_name}</p>
+            ${quotation.customer_address ? `<p style="margin:2px 0;font-size:11px;"><strong>Address:</strong> ${quotation.customer_address}</p>` : ""}
+            ${quotation.customer_gstin ? `<p style="margin:2px 0;font-size:11px;"><strong>GSTIN:</strong> ${quotation.customer_gstin}</p>` : ""}
+          </div>
+          <div style="width:48%;text-align:right;">
+            <h3 style="margin:0 0 5px;font-size:13px;font-weight:bold;">Quotation Details:</h3>
+            <p style="margin:2px 0;font-size:11px;"><strong>Quotation No:</strong> #${quotation.quotation_number}</p>
+            <p style="margin:2px 0;font-size:11px;"><strong>Date:</strong> ${new Date(quotation.quotation_date).toLocaleDateString()}</p>
+          </div>
+        </div>
+        <table style="width:100%;border-collapse:collapse;margin-bottom:10px;border:1px solid #000;">
           <thead>
-            <tr style="border: 1px solid #000;">
-              <th style="border: 1px solid #000; padding: 4px; text-align: center; font-size: 10px; width: 5%; font-weight: bold;">Sr.</th>
-              <th style="border: 1px solid #000; padding: 4px; text-align: left; font-size: 10px; width: ${showPrices ? "20%" : "25%"}; font-weight: bold;">Item Name</th>
-              <th style="border: 1px solid #000; padding: 4px; text-align: left; font-size: 10px; width: ${showPrices ? "10%" : "15%"}; font-weight: bold;">Code</th>
-              <th style="border: 1px solid #000; padding: 4px; text-align: center; font-size: 10px; width: 8%; font-weight: bold;">Length</th>
-              <th style="border: 1px solid #000; padding: 4px; text-align: center; font-size: 10px; width: 6%; font-weight: bold;">Pcs</th>
-              <th style="border: 1px solid #000; padding: 4px; text-align: center; font-size: 10px; width: 8%; font-weight: bold;">Wt.(kg)</th>
-              <th style="border: 1px solid #000; padding: 4px; text-align: center; font-size: 10px; width: 10%; font-weight: bold;">Net Wt.(kg)</th>
-              ${showPrices
-        ? `
-                <th style="border: 1px solid #000; padding: 4px; text-align: right; font-size: 10px; width: 12%; font-weight: bold;">Rate</th>
-                <th style="border: 1px solid #000; padding: 4px; text-align: right; font-size: 10px; width: 12%; font-weight: bold;">Amount</th>
-              `
-        : ""
-      }
+            <tr>
+              <th style="border:1px solid #000;padding:4px;text-align:center;font-size:12px;width:4%;font-weight:bold;">Sr.</th>
+              <th style="border:1px solid #000;padding:4px;text-align:left;font-size:12px;width:30%;font-weight:bold;">Item Name</th>
+              <th style="border:1px solid #000;padding:4px;text-align:left;font-size:12px;width:8%;font-weight:bold;">Code</th>
+              <th style="border:1px solid #000;padding:4px;text-align:center;font-size:12px;width:10%;font-weight:bold;">Length</th>
+              <th style="border:1px solid #000;padding:4px;text-align:center;font-size:12px;width:6%;font-weight:bold;">Pcs</th>
+              <th style="border:1px solid #000;padding:4px;text-align:center;font-size:12px;width:10%;font-weight:bold;">Net Wt.(kg)</th>
+              ${priceHeader}
             </tr>
           </thead>
-          <tbody>
-            ${quotation.quotation_items
-        ?.map((item, index) => {
-          const itemWeight = item.weight || 0;
-          const netWeight = itemWeight * item.pieces;
-          const itemTotal =
-            item.rate_type === "per_kg" && itemWeight > 0
-              ? netWeight * item.price_per_piece
-              : item.pieces * item.price_per_piece;
-
-          return `
-                <tr>
-                  <td style="border: 1px solid #000; padding: 3px; text-align: center; font-size: 10px;">${index + 1
-            }</td>
-                  <td style="border: 1px solid #000; padding: 3px; font-size: 10px;">${item.stock_name
-            }</td>
-                  <td style="border: 1px solid #000; padding: 3px; font-size: 10px;">${item.stock_code
-            }</td>
-                  <td style="border: 1px solid #000; padding: 3px; text-align: center; font-size: 10px;">${item.length
-            }</td>
-                  <td style="border: 1px solid #000; padding: 3px; text-align: center; font-size: 10px;">${item.pieces
-            }</td>
-                  <td style="border: 1px solid #000; padding: 3px; text-align: center; font-size: 10px;">${itemWeight ? itemWeight.toFixed(2) : "-"
-            }</td>
-                  <td style="border: 1px solid #000; padding: 3px; text-align: center; font-size: 10px;">${netWeight > 0 ? netWeight.toFixed(2) : "-"
-            }</td>
-                  ${showPrices
-              ? `
-                    <td style="border: 1px solid #000; padding: 3px; text-align: right; font-size: 10px;">₹${item.price_per_piece.toFixed(
-                2
-              )}${item.rate_type === "per_kg" ? "/kg" : "/pc"}</td>
-                    <td style="border: 1px solid #000; padding: 3px; text-align: right; font-size: 10px;">₹${itemTotal.toFixed(
-                2
-              )}</td>
-                  `
-              : ""
-            }
-                </tr>
-              `;
-        })
-        .join("")}
-          </tbody>
-          ${totalWeight > 0
-        ? `
-            <tfoot>
-              <tr style="border: 1px solid #000;">
-                <td colspan="${showPrices ? "6" : "6"
-        }" style="border: 1px solid #000; padding: 3px; text-align: right; font-size: 10px; font-weight: bold;">Total Weight:</td>
-                <td style="border: 1px solid #000; padding: 3px; text-align: center; font-size: 10px; font-weight: bold;">${totalWeight.toFixed(
-          2
-        )} kg</td>
-                ${showPrices
-          ? '<td colspan="2" style="border: 1px solid #000; padding: 3px;"></td>'
-          : ""
-        }
-              </tr>
-            </tfoot>
-          `
-        : ""
-      }
+          <tbody>${itemRows}</tbody>
+          <tfoot>
+            <tr>
+              <td colspan="4" style="border:1px solid #000;padding:3px;text-align:right;font-size:10px;font-weight:bold;">Total:</td>
+              <td style="border:1px solid #000;padding:3px;text-align:center;font-size:10px;font-weight:bold;">${totalPcs} pcs</td>
+              <td style="border:1px solid #000;padding:3px;text-align:center;font-size:10px;font-weight:bold;">${totalNW.toFixed(3)} kg</td>
+              ${subtotalCell}
+            </tr>
+          </tfoot>
         </table>
-
-        <!-- Totals Section -->
-        <div style="float: right; width: 250px; margin-top: 5px;">
-          <table style="width: 100%; border-collapse: collapse; border: 1px solid #000;">
-            <thead>
-              <tr style="border: 1px solid #000;">
-                <th colspan="2" style="border: 1px solid #000; padding: 5px; text-align: center; font-size: 11px; font-weight: bold;">Summary</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${showPrices
-        ? `
-                <tr>
-                  <td style="border: 1px solid #000; padding: 3px; text-align: right; font-size: 10px;">Subtotal:</td>
-                  <td style="border: 1px solid #000; padding: 3px; text-align: right; font-size: 10px;">₹${quotation.subtotal.toFixed(
-          2
-        )}</td>
-                </tr>
-              `
-        : ""
-      }
-              ${quotation.quotation_additional_costs
-        ?.map(
-          (cost) => `
-                <tr>
-                  <td style="border: 1px solid #000; padding: 3px; text-align: right; font-size: 10px;">${cost.label
-            }:</td>
-                  <td style="border: 1px solid #000; padding: 3px; text-align: right; font-size: 10px;">${cost.type === "add" ? "+" : "-"
-            }₹${cost.amount.toFixed(2)}</td>
-                </tr>
-              `
-        )
-        .join("")}
-              ${quotation.gst_enabled
-        ? `
-                ${quotation.gst_type === "CGST_SGST"
-          ? `
-                  <tr>
-                    <td style="border: 1px solid #000; padding: 3px; text-align: right; font-size: 10px;">CGST (${(
-            quotation.gst_percentage / 2
-          ).toFixed(1)}%):</td>
-                    <td style="border: 1px solid #000; padding: 3px; text-align: right; font-size: 10px;">₹${(
-            quotation.gst_amount / 2
-          ).toFixed(2)}</td>
-                  </tr>
-                  <tr>
-                    <td style="border: 1px solid #000; padding: 3px; text-align: right; font-size: 10px;">SGST (${(
-            quotation.gst_percentage / 2
-          ).toFixed(1)}%):</td>
-                    <td style="border: 1px solid #000; padding: 3px; text-align: right; font-size: 10px;">₹${(
-            quotation.gst_amount / 2
-          ).toFixed(2)}</td>
-                  </tr>
-                `
-          : `
-                  <tr>
-                    <td style="border: 1px solid #000; padding: 3px; text-align: right; font-size: 10px;">${quotation.gst_type
-          } (${quotation.gst_percentage}%):</td>
-                    <td style="border: 1px solid #000; padding: 3px; text-align: right; font-size: 10px;">₹${quotation.gst_amount.toFixed(
-            2
-          )}</td>
-                  </tr>
-                `
-        }
-              `
-        : ""
-      }
-              ${quotation.rounding_adjustment !== 0
-        ? `
-                <tr>
-                  <td style="border: 1px solid #000; padding: 3px; text-align: right; font-size: 10px;">Rounding ${quotation.rounding_adjustment > 0 ? "Up" : "Down"
-        }:</td>
-                  <td style="border: 1px solid #000; padding: 3px; text-align: right; font-size: 10px;">₹${Math.abs(
-          quotation.rounding_adjustment
-        ).toFixed(2)}</td>
-                </tr>
-              `
-        : ""
-      }
-              <tr style="border: 1px solid #000;">
-                <td style="border: 1px solid #000; padding: 5px; text-align: right; font-size: 11px; font-weight: bold;">Net Amount:</td>
-                <td style="border: 1px solid #000; padding: 5px; text-align: right; font-size: 11px; font-weight: bold;">₹${quotation.total_amount.toFixed(
-        2
-      )}</td>
-              </tr>
-              <tr>
-                <td colspan="2" style="border: 1px solid #000; padding: 3px; text-align: right; font-size: 9px; color: #666;">
-                  (Pre-rounded: ₹${quotation.raw_total.toFixed(2)})
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-        <div style="clear: both;"></div>
-        
-        <!-- Footer -->
-        <div style="margin-top: 15px; text-align: center; border-top: 1px solid #000; padding-top: 8px;">
-          <p style="margin: 0; font-size: 10px;">Thank you for your business!</p>
-          <p style="margin: 2px 0 0 0; font-size: 9px;">This is a computer generated quotation.</p>
+        ${totalsBlock}
+        <div style="margin-top:15px;text-align:center;font-size:10px;color:#666;">
+          Generated: ${new Date().toLocaleDateString()} ${new Date().toLocaleTimeString()}
         </div>
       </div>
-    `;
+    </body></html>`;
 
-    const printWindow = window.open("", "_blank");
-    if (printWindow) {
-      printWindow.document.write(`
-        <html>
-          <head>
-            <title>Quotation #${quotation.quotation_number} - ${quotation.customer_name}</title>
-            <style>
-              @media print {
-                body { margin: 0; background: white !important; }
-                @page { size: A4; margin: 0.5in; }
-              }
-              body { 
-                font-family: Arial, sans-serif; 
-                background: white;
-                margin: 0;
-                padding: 0;
-              }
-            </style>
-          </head>
-          <body>
-            ${printContent}
-          </body>
-        </html>
-      `);
-      printWindow.document.close();
-      printWindow.print();
+    // Print via hidden iframe — no new tab/window
+    const iframe = document.createElement("iframe");
+    iframe.style.cssText = "position:fixed;right:0;bottom:0;width:0;height:0;border:none;";
+    document.body.appendChild(iframe);
+    const iframeDoc = iframe.contentDocument || iframe.contentWindow?.document;
+    if (iframeDoc) {
+      iframeDoc.open();
+      iframeDoc.write(html);
+      iframeDoc.close();
+      iframe.contentWindow?.focus();
+      setTimeout(() => {
+        iframe.contentWindow?.print();
+        setTimeout(() => document.body.removeChild(iframe), 1000);
+      }, 500);
     }
   };
 
@@ -1138,23 +1022,28 @@ const QuotationManager = ({
                         </div>
                         <div>
                           <Label>Length</Label>
-                          <Select
+                          <Input
+                            list="manual-length-options"
                             value={manualLength}
-                            onValueChange={(value: stockLength) =>
-                              setManualLength(value)
-                            }
-                          >
-                            <SelectTrigger>
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {dynamicLengthOptions.map((len) => (
-                                <SelectItem key={len} value={len}>
-                                  {len}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
+                            onChange={(e) => setManualLength(e.target.value)}
+                            onBlur={() => {
+                              const val = manualLength.trim();
+                              if (val) {
+                                if (/^[\d\s\.\/\-]+$/.test(val)) {
+                                  setManualLength(val + "ft");
+                                } else if (/^[\d\s\.\/\-]+f$/i.test(val)) {
+                                  setManualLength(val + "t");
+                                }
+                              }
+                            }}
+                            placeholder="e.g. 16"
+                            autoComplete="off"
+                          />
+                          <datalist id="manual-length-options">
+                            {dynamicLengthOptions.map((length) => (
+                              <option key={length} value={length} />
+                            ))}
+                          </datalist>
                         </div>
                       </div>
                     ) : (

@@ -45,7 +45,7 @@ const OrderForm = ({ stocks, customers, setCustomers, onOrderCreate }: OrderForm
 
   const [customerName, setCustomerName] = useState('');
   const [colorCode, setColorCode] = useState('');
-  const [length, setLength] = useState<stockLength>('16ft');
+  const [length, setLength] = useState<stockLength>('');
   const [stockSearch, setStockSearch] = useState('');
   const [selectedStock, setSelectedStock] = useState<Stock | null>(null);
   const [pieces, setPieces] = useState(0);
@@ -104,7 +104,7 @@ const OrderForm = ({ stocks, customers, setCustomers, onOrderCreate }: OrderForm
     setStockSearch('');
     setSelectedStock(null);
     setPieces(0);
-    setLength('16ft');
+    setLength('');
 
     alert('Order placed successfully!');
   };
