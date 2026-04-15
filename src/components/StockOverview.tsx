@@ -103,7 +103,7 @@ const StockOverview = ({
   const [newStock, setNewStock] = useState({
     name: "",
     code: "",
-    length: "16ft" as stockLength,
+    length: "" as stockLength,
     quantity: 0,
     weight: undefined as number | undefined,
   });
@@ -229,7 +229,7 @@ const StockOverview = ({
     setNewStock({
       name: "",
       code: "",
-      length: "16ft",
+      length: "",
       quantity: 0,
       weight: undefined,
     });
@@ -718,11 +718,12 @@ const StockOverview = ({
                     value={newStock.length}
                     onChange={(e) => handleLengthChange(e.target.value)}
                     onBlur={() => {
-                      if (newStock.length && !newStock.length.toLowerCase().endsWith("ft")) {
-                        if (newStock.length.toLowerCase().endsWith("f")) {
-                          handleLengthChange(newStock.length.trim() + "t");
-                        } else {
-                          handleLengthChange(newStock.length.trim() + "ft");
+                      const val = newStock.length.trim();
+                      if (val) {
+                        if (/^[\d\s\.\/\-]+$/.test(val)) {
+                          handleLengthChange(val + "ft");
+                        } else if (/^[\d\s\.\/\-]+f$/i.test(val)) {
+                          handleLengthChange(val + "t");
                         }
                       }
                     }}
@@ -885,11 +886,13 @@ const StockOverview = ({
                       }))
                     }
                     onBlur={() => {
-                      if (newStock.length && !newStock.length.toLowerCase().endsWith("ft")) {
-                        setNewStock((prev) => ({
-                          ...prev,
-                          length: (prev.length.trim() + "ft") as stockLength,
-                        }));
+                      const val = newStock.length.trim();
+                      if (val) {
+                        if (/^[\d\s\.\/\-]+$/.test(val)) {
+                          setNewStock((prev) => ({ ...prev, length: (val + "ft") as stockLength }));
+                        } else if (/^[\d\s\.\/\-]+f$/i.test(val)) {
+                          setNewStock((prev) => ({ ...prev, length: (val + "t") as stockLength }));
+                        }
                       }
                     }}
                     placeholder="e.g. 16"
