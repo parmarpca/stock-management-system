@@ -27,6 +27,9 @@ const CompanySettings = () => {
     company_phone: "",
     company_email: "",
     company_website: "",
+    dealer_logo_1: "",
+    dealer_logo_2: "",
+    authorized_dealers_label: "Authorized Dealers",
   });
 
   const [isSaving, setIsSaving] = useState(false);
@@ -42,6 +45,9 @@ const CompanySettings = () => {
         company_phone: companySettings.company_phone || "",
         company_email: companySettings.company_email || "",
         company_website: companySettings.company_website || "",
+        dealer_logo_1: companySettings.dealer_logo_1 || "",
+        dealer_logo_2: companySettings.dealer_logo_2 || "",
+        authorized_dealers_label: companySettings.authorized_dealers_label || "Authorized Dealers",
       });
     }
   }, [companySettings]);
@@ -281,9 +287,48 @@ const CompanySettings = () => {
                 onChange={(e) =>
                   handleInputChange("company_website", e.target.value)
                 }
-                placeholder="https://www.company.com"
+              placeholder="https://www.company.com"
+            />
+          </div>
+
+          <div className="space-y-4 pt-4 border-t">
+            <h3 className="text-lg font-semibold flex items-center">
+              <span className="bg-blue-100 p-1 rounded mr-2">🤝</span>
+              Authorized Dealer Images
+            </h3>
+            <p className="text-sm text-muted-foreground">Add image URLs for authorized dealer logos to be displayed in the footer of quotations and orders.</p>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="space-y-2">
+                <Label htmlFor="dealer_logo_1">Dealer Logo URL 1</Label>
+                <Input
+                  id="dealer_logo_1"
+                  value={formData.dealer_logo_1 || ""}
+                  onChange={(e) => handleInputChange("dealer_logo_1", e.target.value)}
+                  placeholder="https://example.com/logo1.png"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="dealer_logo_2">Dealer Logo URL 2</Label>
+                <Input
+                  id="dealer_logo_2"
+                  value={formData.dealer_logo_2 || ""}
+                  onChange={(e) => handleInputChange("dealer_logo_2", e.target.value)}
+                  placeholder="https://example.com/logo2.png"
+                />
+              </div>
+            </div>
+            
+            <div className="space-y-2 max-w-md">
+              <Label htmlFor="authorized_dealers_label">Footer Section Label</Label>
+              <Input
+                id="authorized_dealers_label"
+                value={formData.authorized_dealers_label || ""}
+                onChange={(e) => handleInputChange("authorized_dealers_label", e.target.value)}
+                placeholder="Authorized Dealers"
               />
             </div>
+          </div>
           </div>
 
           <div className="flex justify-end space-x-4 pt-6 border-t">
@@ -298,6 +343,9 @@ const CompanySettings = () => {
                     company_phone: companySettings.company_phone || "",
                     company_email: companySettings.company_email || "",
                     company_website: companySettings.company_website || "",
+                    dealer_logo_1: companySettings.dealer_logo_1 || "",
+                    dealer_logo_2: companySettings.dealer_logo_2 || "",
+                    authorized_dealers_label: companySettings.authorized_dealers_label || "Authorized Dealers",
                   });
                 }
                 setFormErrors({});

@@ -15,6 +15,7 @@ export interface QuotationItem {
   rate_type: "per_kg" | "per_pc";
   stock_id?: string;
   weight?: number; // Weight in kg
+  manual_net_weight?: number;
 }
 
 export interface QuotationAdditionalCost {
@@ -58,6 +59,7 @@ export interface QuotationItemForm {
   rate_type: "per_kg" | "per_pc";
   stock_id?: string;
   weight?: number; // Weight in kg
+  manual_net_weight?: number;
 }
 
 export interface QuotationAdditionalCostForm {
@@ -268,6 +270,7 @@ export const useQuotationData = () => {
           rate_type: item.rate_type,
           stock_id: item.stock_id,
           weight: item.weight,
+          manual_net_weight: item.manual_net_weight,
         }));
 
         const { error: itemsError } = await supabase
@@ -376,6 +379,7 @@ export const useQuotationData = () => {
           rate_type: item.rate_type,
           stock_id: item.stock_id,
           weight: item.weight,
+          manual_net_weight: item.manual_net_weight,
         }));
 
         const { error: itemsError } = await supabase

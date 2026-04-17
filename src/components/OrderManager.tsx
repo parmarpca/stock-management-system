@@ -160,6 +160,7 @@ const OrderManager = ({
   const [pricePerPiece, setPricePerPiece] = useState<number | "">("");
   const [rateType, setRateType] = useState<"per_pc" | "per_kg">("per_kg");
   const [itemWeight, setItemWeight] = useState<number | undefined>(undefined);
+  const [manualNetWeight, setManualNetWeight] = useState<number | "">("");
 
   // GST States
   const [gstEnabled, setGstEnabled] = useState(true);
@@ -321,7 +322,13 @@ const OrderManager = ({
     setStockError("");
     setShowStockSuggestions(false);
     setSelectedStockIndex(-1);
-    setItemWeight(stock.weight || undefined);
+    const weight = stock.weight || undefined;
+    setItemWeight(weight);
+    if (pieces > 0 && weight) {
+      setManualNetWeight(Number((weight * pieces).toFixed(3)));
+    } else {
+      setManualNetWeight("");
+    }
   };
 
   // Handle keyboard navigation for stock suggestions
@@ -413,6 +420,7 @@ const OrderManager = ({
       stock_length: selectedStock!.length,
       is_from_stock_table: true,
       rate_type: rateType,
+      manual_net_weight: Number(manualNetWeight) || undefined,
     };
 
     setOrderItems((prev) => [...prev, newItem]);
@@ -421,6 +429,7 @@ const OrderManager = ({
     setPieces(0);
     setPricePerPiece("");
     setItemWeight(undefined);
+    setManualNetWeight("");
     setStockError("");
     setShowStockSuggestions(false);
     setSelectedStockIndex(-1);
@@ -897,7 +906,7 @@ const OrderManager = ({
     const itemRows = (order.order_items ?? [])
       .map((item, index) => {
         const iw = item.weight || 0;
-        const nw = iw * item.pieces_used;
+        const nw = item.manual_net_weight || (iw * item.pieces_used);
         const rt = item.rate_type ?? "per_kg";
         const rate = Number(item.price_per_piece ?? 0);
         const amount = rt === "per_kg" ? rate * nw : rate * item.pieces_used;
@@ -920,7 +929,7 @@ const OrderManager = ({
       .join("") || `<tr><td colspan="${colSpan}" style="border:1px solid #000;padding:4px;text-align:center;font-size:12px;">No items</td></tr>`;
 
     const totalPcs = (order.order_items ?? []).reduce((s, i) => s + i.pieces_used, 0);
-    const totalNW = (order.order_items ?? []).reduce((s, i) => s + (i.weight || 0) * i.pieces_used, 0);
+    const totalNW = (order.order_items ?? []).reduce((s, i) => s + (i.manual_net_weight || (i.weight || 0) * i.pieces_used), 0);
     const subtotalCell = showPrice
       ? `<td colspan="2" style="border:1px solid #000;padding:3px;text-align:center;font-size:10px;font-weight:bold;">₹${order.subtotal?.toFixed(2) ?? "0.00"}</td>`
       : "";
@@ -1013,6 +1022,14 @@ const OrderManager = ({
           </tfoot>
         </table>
         ${totalsBlock}
+        ${companySettings?.dealer_logo_1 || companySettings?.dealer_logo_2 ? `
+        <div style="margin-top:20px; border-top:1px solid #eee; padding-top:10px;">
+          <h3 style="margin:0 0 10px; font-size:12px; text-align:center; font-weight:bold; color:#333;">${companySettings?.authorized_dealers_label || 'Authorized Dealers'}</h3>
+          <div style="display:flex; justify-content:center; gap:40px; align-items:center;">
+            ${companySettings?.dealer_logo_1 ? `<img src="${companySettings.dealer_logo_1}" style="max-height:60px; max-width:200px; object-fit:contain;" />` : ''}
+            ${companySettings?.dealer_logo_2 ? `<img src="${companySettings.dealer_logo_2}" style="max-height:60px; max-width:200px; object-fit:contain;" />` : ''}
+          </div>
+        </div>` : ''}
         <div style="margin-top:15px;text-align:center;font-size:10px;color:#666;">
           Generated: ${new Date().toLocaleDateString()} ${new Date().toLocaleTimeString()}
         </div>
@@ -1453,6 +1470,13 @@ const OrderManager = ({
                           setPieces(newQuantity);
                           if (selectedStock)
                             validateStockQuantity(newQuantity, selectedStock);
+
+                          // Auto update net weight
+                          if (newQuantity > 0 && itemWeight) {
+                            setManualNetWeight(Number((itemWeight * newQuantity).toFixed(3)));
+                          } else {
+                            setManualNetWeight("");
+                          }
                         }}
                         onKeyDown={(e) => {
                           if (e.key === "Enter") {
@@ -1480,10 +1504,34 @@ const OrderManager = ({
                         type="number"
                         step="0.01"
                         value={itemWeight || ""}
-                        onChange={(e) => setItemWeight(Number(e.target.value) || undefined)}
+                        onChange={(e) => {
+                          const newW = Number(e.target.value) || undefined;
+                          setItemWeight(newW);
+                          if (pieces > 0 && newW) {
+                            setManualNetWeight(Number((newW * pieces).toFixed(3)));
+                          }
+                        }}
                         placeholder={selectedStock?.weight ? `${selectedStock.weight} (from stock)` : "Enter weight"}
                         min="0"
-                      // disabled={selectedStock?.weight !== undefined && selectedStock?.weight !== 0 && selectedStock?.weight !== null}
+                        disabled={false}
+                      />
+                    </div>
+
+                    <div>
+                      <Label htmlFor="item-net-weight">Net Weight (kg)</Label>
+                      <Input
+                        id="item-net-weight"
+                        type="number"
+                        step="0.001"
+                        value={manualNetWeight}
+                        onChange={(e) => {
+                          const newNetW = Number(e.target.value) || 0;
+                          setManualNetWeight(newNetW || "");
+                          if (pieces > 0 && newNetW > 0) {
+                            setItemWeight(Number((newNetW / pieces).toFixed(3)));
+                          }
+                        }}
+                        placeholder={(itemWeight && pieces) ? (itemWeight * pieces).toFixed(3) : "Enter net weight"}
                       />
                     </div>
 
@@ -1529,7 +1577,7 @@ const OrderManager = ({
                           {rateType === "per_kg"
                             ? (() => {
                               const iw = itemWeight || selectedStock?.weight || 0;
-                              const nw = iw * pieces;
+                              const nw = manualNetWeight || (iw * pieces);
                               return nw > 0
                                 ? `Est. ₹${(Number(pricePerPiece) * nw).toFixed(2)} (${nw.toFixed(2)} kg × ₹${pricePerPiece}/kg)`
                                 : "Enter weight to see estimate";
@@ -1570,7 +1618,7 @@ const OrderManager = ({
                               </span>
                               {(item.weight || item.price_per_piece > 0) && (
                                 <div className="text-sm text-gray-500 mt-1">
-                                  {item.weight && <span>Weight: {item.weight}kg </span>}
+                                  {(item.weight || item.manual_net_weight) && <span>Weight: {item.manual_net_weight || (item.weight * item.pieces_used).toFixed(2)}kg </span>}
                                   {item.price_per_piece > 0 && <span>Price: ₹{item.price_per_piece}</span>}
                                 </div>
                               )}
@@ -2047,6 +2095,12 @@ const OrderManager = ({
                       setPieces(newQuantity);
                       if (selectedStock)
                         validateStockQuantity(newQuantity, selectedStock);
+                      // Auto update net weight
+                      if (newQuantity > 0 && itemWeight) {
+                        setManualNetWeight(Number((itemWeight * newQuantity).toFixed(3)));
+                      } else {
+                        setManualNetWeight("");
+                      }
                     }}
                     placeholder="Enter quantity"
                     min="1"
@@ -2064,10 +2118,34 @@ const OrderManager = ({
                     type="number"
                     step="0.01"
                     value={itemWeight || ""}
-                    onChange={(e) => setItemWeight(Number(e.target.value) || undefined)}
+                    onChange={(e) => {
+                      const newW = Number(e.target.value) || undefined;
+                      setItemWeight(newW);
+                      if (pieces > 0 && newW) {
+                        setManualNetWeight(Number((newW * pieces).toFixed(3)));
+                      }
+                    }}
                     placeholder={selectedStock?.weight ? `${selectedStock.weight} (from stock)` : "Enter weight"}
                     min="0"
-                    disabled={selectedStock?.weight !== undefined && selectedStock?.weight !== 0 && selectedStock?.weight !== null}
+                    disabled={false}
+                  />
+                </div>
+
+                <div>
+                  <Label htmlFor="edit-net-weight">Net Weight (kg)</Label>
+                  <Input
+                    id="edit-net-weight"
+                    type="number"
+                    step="0.001"
+                    value={manualNetWeight}
+                    onChange={(e) => {
+                      const newNetW = Number(e.target.value) || 0;
+                      setManualNetWeight(newNetW || "");
+                      if (pieces > 0 && newNetW > 0) {
+                        setItemWeight(Number((newNetW / pieces).toFixed(3)));
+                      }
+                    }}
+                    placeholder={(itemWeight && pieces) ? (itemWeight * pieces).toFixed(3) : "Enter net weight"}
                   />
                 </div>
 
@@ -2113,7 +2191,7 @@ const OrderManager = ({
                       {rateType === "per_kg"
                         ? (() => {
                           const iw = itemWeight || selectedStock?.weight || 0;
-                          const nw = iw * pieces;
+                          const nw = manualNetWeight || (iw * pieces);
                           return nw > 0
                             ? `Est. ₹${(Number(pricePerPiece) * nw).toFixed(2)} (${nw.toFixed(2)} kg × ₹${pricePerPiece}/kg)`
                             : "Enter weight to see estimate";
@@ -2152,7 +2230,7 @@ const OrderManager = ({
                           </span>
                           {(item.weight || item.price_per_piece > 0) && (
                             <div className="text-sm text-gray-500 mt-1">
-                              {item.weight && <span>Weight: {item.weight}kg </span>}
+                              {(item.weight || item.manual_net_weight) && <span>Weight: {item.manual_net_weight || (item.weight * item.pieces_used).toFixed(2)}kg </span>}
                               {item.price_per_piece > 0 && <span>Price: ₹{item.price_per_piece}</span>}
                             </div>
                           )}

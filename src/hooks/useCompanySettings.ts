@@ -11,6 +11,9 @@ export interface CompanySettings {
   is_active: boolean;
   created_at: string;
   updated_at: string;
+  dealer_logo_1?: string | null;
+  dealer_logo_2?: string | null;
+  authorized_dealers_label?: string | null;
 }
 
 export interface CompanySettingsForm {
@@ -20,6 +23,9 @@ export interface CompanySettingsForm {
   company_phone?: string;
   company_email?: string;
   company_website?: string;
+  dealer_logo_1?: string | null;
+  dealer_logo_2?: string | null;
+  authorized_dealers_label?: string | null;
 }
 
 export const useCompanySettings = () => {
@@ -73,6 +79,9 @@ export const useCompanySettings = () => {
           company_phone: settings.company_phone || null,
           company_email: settings.company_email || null,
           company_website: settings.company_website || null,
+          dealer_logo_1: settings.dealer_logo_1 || null,
+          dealer_logo_2: settings.dealer_logo_2 || null,
+          authorized_dealers_label: settings.authorized_dealers_label || "Authorized Dealers",
           updated_at: new Date().toISOString(),
         })
         .eq("id", companySettings.id)
@@ -119,6 +128,9 @@ export const useCompanySettings = () => {
           company_phone: settings.company_phone || null,
           company_email: settings.company_email || null,
           company_website: settings.company_website || null,
+          dealer_logo_1: settings.dealer_logo_1 || null,
+          dealer_logo_2: settings.dealer_logo_2 || null,
+          authorized_dealers_label: settings.authorized_dealers_label || "Authorized Dealers",
           is_active: true,
         })
         .select()
