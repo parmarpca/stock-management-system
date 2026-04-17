@@ -150,7 +150,77 @@ BEGIN
         rounding_adjustment = rounding_diff
     WHERE id = order_uuid;
 END;
-$$;
+$function$;
+
+-- Update order_items calculation logic in update_order_totals
+CREATE OR REPLACE FUNCTION public.update_order_totals(order_uuid uuid)
+ RETURNS void
+ LANGUAGE plpgsql
+AS $function$
+DECLARE
+    items_total DECIMAL(12,2) := 0;
+    gst_total DECIMAL(12,2) := 0;
+    raw_final_total DECIMAL(12,2) := 0;
+    rounded_final_total DECIMAL(12,2) := 0;
+    rounding_diff DECIMAL(12,2) := 0;
+    order_record RECORD;
+BEGIN
+    -- Get order details
+    SELECT * INTO order_record FROM orders WHERE id = order_uuid;
+    
+    IF NOT FOUND THEN
+        RETURN;
+    END IF;
+    
+    -- Calculate items subtotal
+    SELECT COALESCE(
+        SUM(
+            CASE 
+                WHEN rate_type = 'per_kg' THEN
+                    COALESCE(manual_net_weight, weight * pieces_used, 0) * price_per_piece
+                ELSE pieces_used * price_per_piece
+            END
+        ), 0
+    ) INTO items_total
+    FROM order_items 
+    WHERE order_id = order_uuid;
+    
+    -- Update individual item subtotals
+    UPDATE order_items SET
+        subtotal = CASE 
+            WHEN rate_type = 'per_kg' THEN
+                COALESCE(manual_net_weight, weight * pieces_used, 0) * price_per_piece
+            ELSE pieces_used * price_per_piece
+        END
+    WHERE order_id = order_uuid;
+    
+    -- Calculate GST if enabled
+    IF order_record.gst_enabled THEN
+        gst_total := items_total * (order_record.gst_percentage / 100);
+    END IF;
+    
+    -- Calculate raw final total
+    raw_final_total := items_total + gst_total;
+    
+    -- Apply rounding logic
+    rounded_final_total := CASE 
+        WHEN raw_final_total % 1 >= 0.5 THEN CEIL(raw_final_total)
+        ELSE FLOOR(raw_final_total)
+    END;
+    
+    -- Calculate rounding adjustment
+    rounding_diff := rounded_final_total - raw_final_total;
+    
+    -- Update order with calculated totals
+    UPDATE orders SET
+        subtotal = items_total,
+        gst_amount = gst_total,
+        raw_total = raw_final_total,
+        total_amount = rounded_final_total,
+        rounding_adjustment = rounding_diff
+    WHERE id = order_uuid;
+END;
+$function$;
 
 
 ALTER FUNCTION "public"."update_order_totals"("order_uuid" "uuid") OWNER TO "postgres";
@@ -229,7 +299,85 @@ BEGIN
         rounding_adjustment = rounding_diff
     WHERE id = quotation_uuid;
 END;
-$$;
+$function$;
+
+-- Update quotation_items calculation logic in update_quotation_totals
+CREATE OR REPLACE FUNCTION public.update_quotation_totals(quotation_uuid uuid)
+ RETURNS void
+ LANGUAGE plpgsql
+AS $function$
+DECLARE
+    items_total DECIMAL(12,2) := 0;
+    additional_total DECIMAL(12,2) := 0;
+    gst_total DECIMAL(12,2) := 0;
+    raw_final_total DECIMAL(12,2) := 0;
+    rounded_final_total DECIMAL(12,2) := 0;
+    rounding_diff DECIMAL(12,2) := 0;
+    quotation_record RECORD;
+BEGIN
+    -- Get quotation details
+    SELECT * INTO quotation_record FROM quotations WHERE id = quotation_uuid;
+    
+    IF NOT FOUND THEN
+        RETURN;
+    END IF;
+    
+    -- Calculate items subtotal
+    SELECT COALESCE(
+        SUM(
+            CASE 
+                WHEN rate_type = 'per_kg' THEN
+                    COALESCE(manual_net_weight, weight * pieces, 0) * price_per_piece
+                ELSE pieces * price_per_piece
+            END
+        ), 0
+    ) INTO items_total
+    FROM quotation_items 
+    WHERE quotation_id = quotation_uuid;
+    
+    -- Update individual item subtotals
+    UPDATE quotation_items SET
+        subtotal = CASE 
+            WHEN rate_type = 'per_kg' THEN
+                COALESCE(manual_net_weight, weight * pieces, 0) * price_per_piece
+            ELSE pieces * price_per_piece
+        END
+    WHERE quotation_id = quotation_uuid;
+    
+    -- Calculate additional costs total
+    SELECT COALESCE(SUM(CASE WHEN type = 'add' THEN amount ELSE -amount END), 0) 
+    INTO additional_total
+    FROM quotation_additional_costs 
+    WHERE quotation_id = quotation_uuid;
+    
+    -- Calculate GST if enabled
+    IF quotation_record.gst_enabled THEN
+        gst_total := (items_total + additional_total) * (quotation_record.gst_percentage / 100);
+    END IF;
+    
+    -- Calculate raw final total
+    raw_final_total := items_total + additional_total + gst_total;
+    
+    -- Apply rounding logic
+    rounded_final_total := CASE 
+        WHEN raw_final_total % 1 >= 0.5 THEN CEIL(raw_final_total)
+        ELSE FLOOR(raw_final_total)
+    END;
+    
+    -- Calculate rounding adjustment
+    rounding_diff := rounded_final_total - raw_final_total;
+    
+    -- Update quotation with calculated totals
+    UPDATE quotations SET
+        subtotal = items_total,
+        additional_costs_total = additional_total,
+        gst_amount = gst_total,
+        raw_total = raw_final_total,
+        total_amount = rounded_final_total,
+        rounding_adjustment = rounding_diff
+    WHERE id = quotation_uuid;
+END;
+$function$;
 
 
 ALTER FUNCTION "public"."update_quotation_totals"("quotation_uuid" "uuid") OWNER TO "postgres";
@@ -262,7 +410,10 @@ CREATE TABLE IF NOT EXISTS "public"."company_settings" (
     "company_website" character varying(255),
     "is_active" boolean DEFAULT true NOT NULL,
     "created_at" timestamp with time zone DEFAULT "now"(),
-    "updated_at" timestamp with time zone DEFAULT "now"()
+    "updated_at" timestamp with time zone DEFAULT "now"(),
+    "dealer_logo_1" "text",
+    "dealer_logo_2" "text",
+    "authorized_dealers_label" character varying(255) DEFAULT 'Authorized Dealers'::character varying
 );
 
 
@@ -325,6 +476,7 @@ CREATE TABLE IF NOT EXISTS "public"."order_items" (
     "stock_code" character varying(50),
     "stock_length" character varying(10),
     "is_from_stock_table" boolean DEFAULT true NOT NULL,
+    "manual_net_weight" numeric(10,3),
     CONSTRAINT "order_items_pieces_used_check" CHECK (("pieces_used" > 0))
 );
 
@@ -392,6 +544,7 @@ CREATE TABLE IF NOT EXISTS "public"."quotation_items" (
     "stock_id" "uuid",
     "created_at" timestamp with time zone DEFAULT "now"(),
     "weight" numeric(10,2),
+    "manual_net_weight" numeric(10,3),
     CONSTRAINT "quotation_items_length_check" CHECK ((("length")::"text" = ANY (ARRAY[('14ft'::character varying)::"text", ('16ft'::character varying)::"text", ('12ft'::character varying)::"text"]))),
     CONSTRAINT "quotation_items_pieces_check" CHECK (("pieces" > 0)),
     CONSTRAINT "quotation_items_price_per_piece_check" CHECK (("price_per_piece" > (0)::numeric))
