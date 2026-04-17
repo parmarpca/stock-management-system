@@ -86,6 +86,7 @@ const QuotationManager = ({
   onQuotationCreate,
   onQuotationUpdate,
   onQuotationDelete,
+  fetchQuotations
 }: QuotationManagerProps) => {
   const dynamicLengthOptions = Array.from(new Set(stocks.map(s => s.length).filter(Boolean))).sort();
 
@@ -138,6 +139,7 @@ const QuotationManager = ({
   const [pieces, setPieces] = useState(0);
   const [pricePerPiece, setPricePerPiece] = useState(0);
   const [itemWeight, setItemWeight] = useState<number | undefined>(undefined);
+  const [manualNetWeight, setManualNetWeight] = useState<number | "">("");
   const [rateType, setRateType] = useState<"per_kg" | "per_pc">("per_kg");
   const [showStockSuggestions, setShowStockSuggestions] = useState(false);
   const [selectedStockIndex, setSelectedStockIndex] = useState(-1);
@@ -161,6 +163,7 @@ const QuotationManager = ({
 
   const { companySettings } = useCompanySettings();
 
+  console.log("COMA", companySettings)
   // Use company settings from database, fallback to constants
   const companyInfo = companySettings
     ? {
@@ -331,6 +334,7 @@ const QuotationManager = ({
       rate_type: rateType,
       stock_id: selectedStock?.id,
       weight: itemWeight,
+      manual_net_weight: Number(manualNetWeight) || undefined,
     };
 
     setQuotationItems([...quotationItems, newItem]);
@@ -341,6 +345,7 @@ const QuotationManager = ({
     setPieces(0);
     setPricePerPiece(0);
     setItemWeight(undefined);
+    setManualNetWeight("");
     setRateType("per_kg");
     setIsManualItem(false);
     setManualStockName("");
@@ -358,6 +363,11 @@ const QuotationManager = ({
     setSelectedStockIndex(-1);
     setIsManualItem(false);
     setItemWeight(stock.weight);
+    if (pieces > 0 && stock.weight) {
+      setManualNetWeight(Number((stock.weight * pieces).toFixed(3)));
+    } else {
+      setManualNetWeight("");
+    }
 
     // Focus on pieces input after stock selection
     setTimeout(() => {
@@ -442,11 +452,11 @@ const QuotationManager = ({
   const calculateTotals = () => {
     // Calculate subtotal based on weight and price per piece
     const subtotal = quotationItems.reduce((sum, item) => {
-      const itemWeight = item.weight || 0;
-      const totalWeight = itemWeight * item.pieces;
+      const iw = item.weight || 0;
+      const nw = item.manual_net_weight || (iw * item.pieces);
       const itemAmount =
-        item.rate_type === "per_kg" && itemWeight > 0
-          ? totalWeight * item.price_per_piece
+        item.rate_type === "per_kg" && (nw > 0)
+          ? nw * item.price_per_piece
           : item.pieces * item.price_per_piece;
       return sum + itemAmount;
     }, 0);
@@ -498,6 +508,7 @@ const QuotationManager = ({
     setPieces(0);
     setPricePerPiece(0);
     setItemWeight(undefined);
+    setManualNetWeight("");
     setIsManualItem(false);
     setManualStockName("");
     setManualStockCode("");
@@ -629,7 +640,7 @@ const QuotationManager = ({
     const itemRows = (quotation.quotation_items ?? [])
       .map((item, index) => {
         const iw = item.weight || 0;
-        const nw = iw * item.pieces;
+        const nw = item.manual_net_weight || (iw * item.pieces);
         const rt = item.rate_type ?? "per_kg";
         const rate = Number(item.price_per_piece ?? 0);
         const amount = rt === "per_kg" ? rate * nw : rate * item.pieces;
@@ -652,7 +663,7 @@ const QuotationManager = ({
       .join("") || `<tr><td colspan="${colSpan}" style="border:1px solid #000;padding:4px;text-align:center;font-size:12px;">No items</td></tr>`;
 
     const totalPcs = (quotation.quotation_items ?? []).reduce((s, i) => s + i.pieces, 0);
-    const totalNW = (quotation.quotation_items ?? []).reduce((s, i) => s + (i.weight || 0) * i.pieces, 0);
+    const totalNW = (quotation.quotation_items ?? []).reduce((s, i) => s + (i.manual_net_weight || (i.weight || 0) * i.pieces), 0);
     const subtotalCell = showPrices
       ? `<td colspan="2" style="border:1px solid #000;padding:3px;text-align:center;font-size:10px;font-weight:bold;">₹${quotation.subtotal?.toFixed(2) ?? "0.00"}</td>`
       : "";
@@ -740,6 +751,14 @@ const QuotationManager = ({
           </tfoot>
         </table>
         ${totalsBlock}
+        ${companyInfo && (companySettings?.dealer_logo_1 || companySettings?.dealer_logo_2) ? `
+        <div style="margin-top:20px; border-top:1px solid #eee; padding-top:10px;">
+          <h3 style="margin:0 0 10px; font-size:12px; text-align:center; font-weight:bold; color:#333;">${companySettings?.authorized_dealers_label || 'Authorized Dealers'}</h3>
+          <div style="display:flex; justify-content:center; gap:40px; align-items:center;">
+            ${companySettings?.dealer_logo_1 ? `<img src="${companySettings.dealer_logo_1}" style="max-height:60px; max-width:200px; object-fit:contain;" />` : ''}
+            ${companySettings?.dealer_logo_2 ? `<img src="${companySettings.dealer_logo_2}" style="max-height:60px; max-width:200px; object-fit:contain;" />` : ''}
+          </div>
+        </div>` : ''}
         <div style="margin-top:15px;text-align:center;font-size:10px;color:#666;">
           Generated: ${new Date().toLocaleDateString()} ${new Date().toLocaleTimeString()}
         </div>
@@ -761,6 +780,16 @@ const QuotationManager = ({
         setTimeout(() => document.body.removeChild(iframe), 1000);
       }, 500);
     }
+
+    // Open In new tab
+    // const newWindow = window.open("", "_blank");
+    // if (newWindow) {
+    //   newWindow.document.write(html);
+    //   newWindow.document.close();
+    //   newWindow.focus();
+    //   newWindow.print();
+    //   // newWindow.close();
+    // }
   };
 
   const handleSuccessDialogPrint = async () => {
@@ -1123,7 +1152,13 @@ const QuotationManager = ({
                         <Input
                           type="number"
                           value={pieces || ""}
-                          onChange={(e) => setPieces(Number(e.target.value))}
+                          onChange={(e) => {
+                            const p = Number(e.target.value);
+                            setPieces(p);
+                            if (p > 0 && itemWeight) {
+                              setManualNetWeight(Number((itemWeight * p).toFixed(3)));
+                            }
+                          }}
                           placeholder="0"
                           min="1"
                           id="pieces-input"
@@ -1136,21 +1171,36 @@ const QuotationManager = ({
                           type="number"
                           step="0.01"
                           value={itemWeight || ""}
-                          onChange={(e) =>
-                            setItemWeight(Number(e.target.value) || undefined)
-                          }
+                          onChange={(e) => {
+                            setItemWeight(Number(e.target.value) || undefined);
+                            const w = Number(e.target.value) || undefined;
+                            if (pieces > 0 && w) {
+                              setManualNetWeight(Number((w * pieces).toFixed(3)));
+                            }
+                          }}
                           placeholder={
                             selectedStock?.weight
                               ? `${selectedStock.weight} (from stock)`
                               : "Enter weight"
                           }
                           min="0"
-                          disabled={
-                            selectedStock?.weight !== undefined &&
-                            selectedStock?.weight !== 0 &&
-                            selectedStock?.weight !== null &&
-                            !isManualItem
-                          }
+                          disabled={false}
+                        />
+                      </div>
+                      <div>
+                        <Label>Net Weight (kg)</Label>
+                        <Input
+                          type="number"
+                          step="0.001"
+                          value={manualNetWeight}
+                          onChange={(e) => {
+                            const newNetW = Number(e.target.value) || 0;
+                            setManualNetWeight(newNetW || "");
+                            if (pieces > 0 && newNetW > 0) {
+                              setItemWeight(Number((newNetW / pieces).toFixed(3)));
+                            }
+                          }}
+                          placeholder={(itemWeight && pieces) ? (itemWeight * pieces).toFixed(3) : "Enter net weight"}
                         />
                       </div>
                       <div>
@@ -1209,7 +1259,7 @@ const QuotationManager = ({
                       <div className="space-y-2">
                         {quotationItems.map((item, index) => {
                           const itemWeight = item.weight || 0;
-                          const totalWeight = itemWeight * item.pieces;
+                          const totalWeight = item.manual_net_weight || (itemWeight * item.pieces);
                           const itemTotal =
                             item.rate_type === "per_kg" && itemWeight > 0
                               ? totalWeight * item.price_per_piece
@@ -1615,7 +1665,7 @@ const QuotationManager = ({
                               <div className="space-y-1">
                                 {quotation.quotation_items.map((item, index) => {
                                   const itemWeight = item.weight || 0;
-                                  const totalWeight = itemWeight * item.pieces;
+                                  const totalWeight = item.manual_net_weight || (itemWeight * item.pieces);
                                   const itemTotal = itemWeight
                                     ? totalWeight * item.price_per_piece
                                     : item.pieces * item.price_per_piece;
@@ -2007,7 +2057,13 @@ const QuotationManager = ({
                     <Input
                       type="number"
                       value={pieces || ""}
-                      onChange={(e) => setPieces(Number(e.target.value))}
+                      onChange={(e) => {
+                        const p = Number(e.target.value);
+                        setPieces(p);
+                        if (p > 0 && itemWeight) {
+                          setManualNetWeight(Number((itemWeight * p).toFixed(3)));
+                        }
+                      }}
                       placeholder="0"
                       min="1"
                       id="pieces-input"
@@ -2020,21 +2076,20 @@ const QuotationManager = ({
                       type="number"
                       step="0.01"
                       value={itemWeight || ""}
-                      onChange={(e) =>
-                        setItemWeight(Number(e.target.value) || undefined)
-                      }
+                      onChange={(e) => {
+                        const newW = Number(e.target.value) || undefined;
+                        setItemWeight(newW);
+                        if (pieces > 0 && newW) {
+                          setManualNetWeight(Number((newW * pieces).toFixed(3)));
+                        }
+                      }}
                       placeholder={
                         selectedStock?.weight
                           ? `${selectedStock.weight} (from stock)`
                           : "Enter weight (will update stock)"
                       }
                       min="0"
-                      disabled={
-                        selectedStock?.weight !== undefined &&
-                        selectedStock?.weight !== 0 &&
-                        selectedStock?.weight !== null &&
-                        !isManualItem
-                      }
+                      disabled={false}
                     />
                     {selectedStock &&
                       !selectedStock.weight &&
@@ -2057,13 +2112,30 @@ const QuotationManager = ({
                       onKeyDown={(e) => handleItemKeyDown(e, "price")}
                     />
                   </div>
-                  <div className="flex items-end">
-                    <Button onClick={addItemToQuotation} className="w-full">
-                      <Plus className="h-4 w-4 mr-2" />
-                      Add Item
-                    </Button>
+                  <div>
+                    <Label>Net Weight (kg)</Label>
+                    <Input
+                      type="number"
+                      step="0.001"
+                      value={manualNetWeight}
+                      onChange={(e) => {
+                        const newNetW = Number(e.target.value) || 0;
+                        setManualNetWeight(newNetW || "");
+                        if (pieces > 0 && newNetW > 0) {
+                          setItemWeight(Number((newNetW / pieces).toFixed(3)));
+                        }
+                      }}
+                      placeholder={(itemWeight && pieces) ? (itemWeight * pieces).toFixed(3) : "Enter net weight"}
+                    />
                   </div>
                 </div>
+                <div className="flex items-end">
+                  <Button onClick={addItemToQuotation} className="w-full">
+                    <Plus className="h-4 w-4 mr-2" />
+                    Add Item
+                  </Button>
+                </div>
+                {/* </div> */}
               </CardContent>
             </Card>
 
@@ -2077,7 +2149,7 @@ const QuotationManager = ({
                   <div className="space-y-2">
                     {quotationItems.map((item, index) => {
                       const itemWeight = item.weight || 0;
-                      const totalWeight = itemWeight * item.pieces;
+                      const totalWeight = item.manual_net_weight || (itemWeight * item.pieces);
                       const itemTotal = itemWeight
                         ? totalWeight * item.price_per_piece
                         : item.pieces * item.price_per_piece;
@@ -2448,7 +2520,7 @@ const QuotationManager = ({
         showPrintOption={true}
         printLabel="Print Quotation"
       />
-    </div>
+    </div >
   );
 };
 

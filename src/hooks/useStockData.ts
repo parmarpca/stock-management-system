@@ -43,6 +43,7 @@ export interface OrderItem {
   stock_length?: string;
   is_from_stock_table?: boolean;
   rate_type?: "per_pc" | "per_kg";
+  manual_net_weight?: number;
 }
 
 export interface Order {
@@ -321,6 +322,7 @@ export const useStockData = () => {
         stock_length: item.stock_length,
         is_from_stock_table: item.is_from_stock_table,
         rate_type: item.rate_type ?? "per_kg",
+        manual_net_weight: item.manual_net_weight,
       }));
 
       const { error: itemsError } = await supabase
@@ -573,6 +575,7 @@ export const useStockData = () => {
         stock_length: item.stock_length,
         is_from_stock_table: item.is_from_stock_table,
         rate_type: item.rate_type ?? "per_kg",
+        manual_net_weight: item.manual_net_weight,
       }));
 
       const { error: itemsError } = await supabase
