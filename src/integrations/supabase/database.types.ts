@@ -228,6 +228,7 @@ export type Database = {
           id: string
           is_hidden: boolean
           order_date: string
+          order_number: number
           raw_total: number
           rounding_adjustment: number
           show_unit_price: boolean
@@ -250,6 +251,7 @@ export type Database = {
           id?: string
           is_hidden?: boolean
           order_date?: string
+          order_number?: number
           raw_total?: number
           rounding_adjustment?: number
           show_unit_price?: boolean
@@ -272,6 +274,7 @@ export type Database = {
           id?: string
           is_hidden?: boolean
           order_date?: string
+          order_number?: number
           raw_total?: number
           rounding_adjustment?: number
           show_unit_price?: boolean

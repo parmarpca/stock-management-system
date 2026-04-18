@@ -992,6 +992,7 @@ const OrderManager = ({
           </div>
           <div style="width:48%;text-align:right;">
             <h3 style="margin:0 0 5px;font-size:13px;font-weight:bold;">Order Details:</h3>
+            <p style="margin:2px 0;font-size:11px;"><strong>Serial No:</strong> #${order.order_number || "N/A"}</p>
             <p style="margin:2px 0;font-size:11px;"><strong>Date:</strong> ${order.order_date}</p>
             ${order.color_code ? `<p style="margin:2px 0;font-size:11px;"><strong>Color:</strong> ${order.color_code}</p>` : ""}
             ${order.vehicle_number ? `<p style="margin:2px 0;font-size:11px;"><strong>Vehicle:</strong> ${order.vehicle_number}</p>` : ""}
@@ -1015,8 +1016,8 @@ const OrderManager = ({
             <tr>
               <td colspan="4" style="border:1px solid #000;padding:3px;text-align:right;font-size:10px;font-weight:bold;">Total:</td>
               <td style="border:1px solid #000;padding:3px;text-align:center;font-size:10px;font-weight:bold;">${totalPcs} pcs</td>
-              <td style="border:1px solid #000;padding:3px;text-align:center;font-size:10px;"></td>
               <td style="border:1px solid #000;padding:3px;text-align:center;font-size:10px;font-weight:bold;">${totalNW.toFixed(3)} kg</td>
+           ${showPrice ? `<td style="border:1px solid #000;padding:3px;text-align:center;font-size:10px;"></td>` : ""}
               ${subtotalCell}
             </tr>
           </tfoot>
