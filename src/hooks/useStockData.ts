@@ -69,6 +69,7 @@ export interface Order {
   order_additional_costs?: OrderAdditionalCost[];
   is_hidden?: boolean;
   site_name?: string;
+  order_number?: number;
 }
 
 export const useStockData = () => {
@@ -124,7 +125,8 @@ export const useStockData = () => {
             stock_code,
             stock_length,
             is_from_stock_table,
-            rate_type
+            rate_type,
+            manual_net_weight
           ),
           order_additional_costs(*)
         `);
@@ -164,6 +166,7 @@ export const useStockData = () => {
           show_unit_price?: boolean;
           is_hidden?: boolean;
           site_name?: string;
+          order_number?: number;
           customers?: { name?: string; address?: string; gstin_number?: string };
           order_items?: (OrderItem & { stocks?: { name?: string; code?: string; length?: string } })[];
           order_additional_costs?: OrderAdditionalCost[];
