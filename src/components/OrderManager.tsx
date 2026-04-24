@@ -98,6 +98,7 @@ interface OrderItemForm {
   stock_length: string;
   is_from_stock_table?: boolean;
   rate_type?: "per_pc" | "per_kg";
+  manual_net_weight?: number;
 }
 
 const OrderManager = ({
@@ -548,6 +549,7 @@ const OrderManager = ({
         stock_length: item.stock_length,
         is_from_stock_table: item.is_from_stock_table,
         rate_type: item.rate_type || "per_kg",
+        manual_net_weight: item.manual_net_weight,
       }));
 
       const newOrder = await onOrderCreate(
@@ -618,6 +620,7 @@ const OrderManager = ({
           stock_code: oi.stock_code,
           stock_length: oi.stock_length,
           rate_type: oi.rate_type,
+          manual_net_weight: oi.manual_net_weight,
         })),
         order_date: orderDate,
       };
@@ -665,6 +668,9 @@ const OrderManager = ({
         stock_name: item.stock_name || "",
         stock_code: item.stock_code || "",
         stock_length: item.stock_length || "",
+        rate_type: item.rate_type || "per_kg",
+        manual_net_weight: item.manual_net_weight,
+        is_from_stock_table: item.is_from_stock_table,
       })) || [];
     setOrderItems(items);
     setOriginalOrderItems(items);
@@ -731,7 +737,8 @@ const OrderManager = ({
         stock_code: item.stock_code,
         stock_length: item.stock_length,
         is_from_stock_table: item.is_from_stock_table,
-        rate_type: item.rate_type || "per_kg"
+        rate_type: item.rate_type || "per_kg",
+        manual_net_weight: item.manual_net_weight,
       }));
 
       await onOrderUpdate(
