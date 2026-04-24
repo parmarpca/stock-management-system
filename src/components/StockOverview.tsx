@@ -32,6 +32,7 @@ import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { supabase } from "@/integrations/supabase/client";
 import { stockLength } from "@/constants/config";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface Stock {
   id: string;
@@ -40,6 +41,7 @@ interface Stock {
   length: stockLength;
   quantity: number;
   weight?: number; // Weight in kg
+  stock_type?: string;
   created_at: string;
   updated_at: string;
 }
@@ -62,9 +64,10 @@ interface StockOverviewProps {
   onStockCreate: (stockData: {
     name: string;
     code: string;
-    length: stockLength;
+    length: stockLength | string;
     quantity: number;
     weight?: number;
+    stock_type?: string;
   }) => Promise<Stock>;
   onStockDelete: (stockId: string) => Promise<void>;
   onRefresh: () => Promise<void>;
@@ -81,6 +84,11 @@ const StockOverview = ({
   // Use dynamically generated options based on database plus standard defaults in case it's empty
   const dbOptions = Array.from(new Set(stocks.map(s => s.length).filter(Boolean))).sort();
   const dynamicLengthOptions = dbOptions.length > 0 ? dbOptions : ['12ft', '14ft', '16ft'];
+
+  const { hasAluminiumAccess, hasHardwareAccess } = useAuth();
+  const [activeTab, setActiveTab] = useState<"aluminium_stock" | "hardware">(
+    hasAluminiumAccess ? "aluminium_stock" : "hardware"
+  );
 
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isHistoryDialogOpen, setIsHistoryDialogOpen] = useState(false);
@@ -103,9 +111,10 @@ const StockOverview = ({
   const [newStock, setNewStock] = useState({
     name: "",
     code: "",
-    length: "" as stockLength,
+    length: "" as stockLength | string,
     quantity: 0,
     weight: undefined as number | undefined,
+    stock_type: hasAluminiumAccess ? "aluminium_stock" : "hardware",
   });
 
   // Get unique prefixes from stock codes
@@ -124,7 +133,12 @@ const StockOverview = ({
     const matchesLowStock = !showLowStockOnly || stock.quantity < 50;
     const matchesPrefix =
       selectedPrefix === "all" || stock.code.startsWith(selectedPrefix);
-    return matchesSearch && matchesLowStock && matchesPrefix;
+      
+    const matchesTab = (hasAluminiumAccess && hasHardwareAccess) 
+      ? stock.stock_type === activeTab || (!stock.stock_type && activeTab === 'aluminium_stock')
+      : true;
+
+    return matchesSearch && matchesLowStock && matchesPrefix && matchesTab;
   });
 
   // Filter stocks based on code input for suggestions
@@ -132,24 +146,26 @@ const StockOverview = ({
     .filter(
       (stock) =>
         stock.code.toLowerCase().includes(codeInput.toLowerCase()) &&
-        codeInput.trim() !== ""
+        codeInput.trim() !== "" &&
+        (stock.stock_type === newStock.stock_type || (!stock.stock_type && newStock.stock_type === 'aluminium_stock'))
     )
     .slice(0, 5);
 
   // Given a code and length, check if that pair already exists in stocks
-  const findExistingStock = (code: string, length: string): Stock | null =>
+  const findExistingStock = (code: string, length: string, type: string): Stock | null =>
     stocks.find(
       (s) =>
         s.code.toLowerCase() === code.toLowerCase() &&
-        s.length === length
+        (type === 'hardware' || s.length === length) &&
+        (s.stock_type === type || (!s.stock_type && type === 'aluminium_stock'))
     ) ?? null;
 
   // Handle code input changes — show suggestions, but don't auto-lock until user picks one
   const handleCodeInputChange = (value: string) => {
     setCodeInput(value);
     setNewStock((prev) => {
-      // Re-check existing stock with current length
-      const match = findExistingStock(value, prev.length);
+      // Re-check existing stock with current length and type
+      const match = findExistingStock(value, prev.length, prev.stock_type);
       setExistingStock(match);
       return { ...prev, code: value };
     });
@@ -166,6 +182,7 @@ const StockOverview = ({
       name: stock.name,
       length: stock.length,
       weight: stock.weight,
+      stock_type: stock.stock_type || "aluminium_stock",
     }));
     // The picked stock IS the exact code+length match
     setExistingStock(stock);
@@ -173,10 +190,9 @@ const StockOverview = ({
     setSelectedCodeIndex(-1);
   };
 
-  // When the length dropdown changes, re-evaluate if the code+length combo exists
-  const handleLengthChange = (value: stockLength) => {
+  const handleLengthChange = (value: stockLength | string) => {
     setNewStock((prev) => {
-      const match = findExistingStock(prev.code, value);
+      const match = findExistingStock(prev.code, value, prev.stock_type);
       setExistingStock(match);
       if (match) {
         // Pre-fill name and weight from the matched stock
@@ -232,6 +248,7 @@ const StockOverview = ({
       length: "",
       quantity: 0,
       weight: undefined,
+      stock_type: activeTab,
     });
     setExistingStock(null);
     setShowCodeSuggestions(false);
@@ -242,15 +259,21 @@ const StockOverview = ({
     if (
       !newStock.name.trim() ||
       !newStock.code.trim() ||
-      newStock.quantity <= 0
+      newStock.quantity <= 0 ||
+      (newStock.stock_type !== 'hardware' && !newStock.length)
     ) {
-      alert("Please fill all fields");
+      alert("Please fill all required fields");
       return;
+    }
+
+    const payload = { ...newStock };
+    if (payload.stock_type === 'hardware') {
+      payload.length = '';
     }
 
     setIsAddingStock(true);
     try {
-      await onStockCreate(newStock);
+      await onStockCreate(payload);
       resetForm();
       setIsAddDialogOpen(false);
       alert("Stock added successfully!");
@@ -295,6 +318,7 @@ const StockOverview = ({
       length: stock.length,
       quantity: stock.quantity,
       weight: stock.weight,
+      stock_type: stock.stock_type || "aluminium_stock",
     });
     setCodeInput(stock.code);
     setIsEditDialogOpen(true);
@@ -305,11 +329,14 @@ const StockOverview = ({
       !editingStock ||
       !newStock.name.trim() ||
       !newStock.code.trim() ||
-      newStock.quantity < 0
+      newStock.quantity < 0 ||
+      (newStock.stock_type !== 'hardware' && !newStock.length)
     ) {
       alert("Please fill all fields correctly");
       return;
     }
+
+    const payloadLength = newStock.stock_type === 'hardware' ? null : newStock.length;
 
     setIsAddingStock(true);
     try {
@@ -318,9 +345,10 @@ const StockOverview = ({
         .update({
           name: newStock.name,
           code: newStock.code,
-          length: newStock.length,
+          length: payloadLength,
           quantity: newStock.quantity,
           weight: newStock.weight,
+          stock_type: newStock.stock_type,
         })
         .eq("id", editingStock.id)
         .select()
@@ -532,6 +560,23 @@ const StockOverview = ({
 
   return (
     <div className="space-y-4 lg:space-y-6">
+      {hasAluminiumAccess && hasHardwareAccess && (
+        <div className="flex bg-gray-100 p-1 rounded-md mb-4 self-start max-w-fit">
+          <button
+            className={`px-4 py-2 rounded-sm text-sm font-medium transition-colors ${activeTab === 'aluminium_stock' ? 'bg-white shadow-sm' : 'text-gray-600 hover:text-gray-900'}`}
+            onClick={() => setActiveTab('aluminium_stock')}
+          >
+            Aluminium Stocks
+          </button>
+          <button
+            className={`px-4 py-2 rounded-sm text-sm font-medium transition-colors ${activeTab === 'hardware' ? 'bg-white shadow-sm' : 'text-gray-600 hover:text-gray-900'}`}
+            onClick={() => setActiveTab('hardware')}
+          >
+            Hardware Stocks
+          </button>
+        </div>
+      )}
+
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
         {/* <h2 className="text-xl lg:text-2xl font-bold">Stock Overview</h2> */}
         {/* Search */}
@@ -644,6 +689,31 @@ const StockOverview = ({
                 }}
                 className="space-y-4"
               >
+                {hasAluminiumAccess && hasHardwareAccess && (
+                  <div>
+                    <Label>Stock Type</Label>
+                    <Select
+                      value={newStock.stock_type}
+                      onValueChange={(val) => {
+                        setNewStock((prev) => {
+                          const match = findExistingStock(prev.code, prev.length, val);
+                          setExistingStock(match);
+                          return { ...prev, stock_type: val };
+                        });
+                      }}
+                      disabled={!!existingStock}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select type" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="aluminium_stock">Aluminium Stock</SelectItem>
+                        <SelectItem value="hardware">Hardware</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+
                 {/* Stock Code - First Field */}
                 <div className="relative">
                   <Label htmlFor="stock-code">Stock Code</Label>
@@ -709,38 +779,40 @@ const StockOverview = ({
                 </div>
 
                 {/* Stock Length */}
-                <div>
-                  <Label htmlFor="stock-length">Stock Length</Label>
-                  <Input
-                    id="stock-length"
-                    list="stock-length-options"
-                    className="w-full"
-                    value={newStock.length}
-                    onChange={(e) => handleLengthChange(e.target.value)}
-                    onBlur={() => {
-                      const val = newStock.length.trim();
-                      if (val) {
-                        if (/^[\d\s\.\/\-]+$/.test(val)) {
-                          handleLengthChange(val + "ft");
-                        } else if (/^[\d\s\.\/\-]+f$/i.test(val)) {
-                          handleLengthChange(val + "t");
+                {newStock.stock_type !== 'hardware' && (
+                  <div>
+                    <Label htmlFor="stock-length">Stock Length</Label>
+                    <Input
+                      id="stock-length"
+                      list="stock-length-options"
+                      className="w-full"
+                      value={newStock.length}
+                      onChange={(e) => handleLengthChange(e.target.value)}
+                      onBlur={() => {
+                        const val = newStock.length.trim();
+                        if (val) {
+                          if (/^[\d\s\.\/\-]+$/.test(val)) {
+                            handleLengthChange(val + "ft");
+                          } else if (/^[\d\s\.\/\-]+f$/i.test(val)) {
+                            handleLengthChange(val + "t");
+                          }
                         }
-                      }
-                    }}
-                    placeholder="e.g. 16"
-                    autoComplete="off"
-                  />
-                  <datalist id="stock-length-options">
-                    {dynamicLengthOptions.map((length) => (
-                      <option key={length} value={length} />
-                    ))}
-                  </datalist>
-                  {existingStock && (
-                    <p className="text-xs text-amber-600 mt-1">
-                      ⚠️ Stock with code <strong>{existingStock.code}</strong> and length <strong>{existingStock.length}</strong> already exists ({existingStock.quantity} pcs). Adding will increase its quantity.
-                    </p>
-                  )}
-                </div>
+                      }}
+                      placeholder="e.g. 16"
+                      autoComplete="off"
+                    />
+                    <datalist id="stock-length-options">
+                      {dynamicLengthOptions.map((length) => (
+                        <option key={length} value={length} />
+                      ))}
+                    </datalist>
+                    {existingStock && (
+                      <p className="text-xs text-amber-600 mt-1">
+                        ⚠️ Stock with code <strong>{existingStock.code}</strong> and length <strong>{existingStock.length}</strong> already exists ({existingStock.quantity} pcs). Adding will increase its quantity.
+                      </p>
+                    )}
+                  </div>
+                )}
 
                 {/* Stock Weight */}
                 <div>
@@ -842,6 +914,24 @@ const StockOverview = ({
                 }}
                 className="space-y-4"
               >
+                {hasAluminiumAccess && hasHardwareAccess && (
+                  <div>
+                    <Label>Stock Type</Label>
+                    <Select
+                      value={newStock.stock_type}
+                      onValueChange={(val) => setNewStock((prev) => ({ ...prev, stock_type: val }))}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select type" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="aluminium_stock">Aluminium Stock</SelectItem>
+                        <SelectItem value="hardware">Hardware</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+
                 {/* Stock Code */}
                 <div>
                   <Label htmlFor="edit-stock-code">Stock Code</Label>
@@ -872,38 +962,40 @@ const StockOverview = ({
                 </div>
 
                 {/* Stock Length */}
-                <div>
-                  <Label htmlFor="edit-stock-length">Stock Length</Label>
-                  <Input
-                    id="edit-stock-length"
-                    list="edit-stock-length-options"
-                    className="w-full"
-                    value={newStock.length}
-                    onChange={(e) =>
-                      setNewStock((prev) => ({
-                        ...prev,
-                        length: e.target.value as stockLength,
-                      }))
-                    }
-                    onBlur={() => {
-                      const val = newStock.length.trim();
-                      if (val) {
-                        if (/^[\d\s\.\/\-]+$/.test(val)) {
-                          setNewStock((prev) => ({ ...prev, length: (val + "ft") as stockLength }));
-                        } else if (/^[\d\s\.\/\-]+f$/i.test(val)) {
-                          setNewStock((prev) => ({ ...prev, length: (val + "t") as stockLength }));
-                        }
+                {newStock.stock_type !== 'hardware' && (
+                  <div>
+                    <Label htmlFor="edit-stock-length">Stock Length</Label>
+                    <Input
+                      id="edit-stock-length"
+                      list="edit-stock-length-options"
+                      className="w-full"
+                      value={newStock.length}
+                      onChange={(e) =>
+                        setNewStock((prev) => ({
+                          ...prev,
+                          length: e.target.value as stockLength,
+                        }))
                       }
-                    }}
-                    placeholder="e.g. 16"
-                    autoComplete="off"
-                  />
-                  <datalist id="edit-stock-length-options">
-                    {dynamicLengthOptions.map((length) => (
-                      <option key={length} value={length} />
-                    ))}
-                  </datalist>
-                </div>
+                      onBlur={() => {
+                        const val = newStock.length.trim();
+                        if (val) {
+                          if (/^[\d\s\.\/\-]+$/.test(val)) {
+                            setNewStock((prev) => ({ ...prev, length: (val + "ft") as stockLength }));
+                          } else if (/^[\d\s\.\/\-]+f$/i.test(val)) {
+                            setNewStock((prev) => ({ ...prev, length: (val + "t") as stockLength }));
+                          }
+                        }
+                      }}
+                      placeholder="e.g. 16"
+                      autoComplete="off"
+                    />
+                    <datalist id="edit-stock-length-options">
+                      {dynamicLengthOptions.map((length) => (
+                        <option key={length} value={length} />
+                      ))}
+                    </datalist>
+                  </div>
+                )}
 
                 {/* Stock Weight */}
                 <div>
@@ -1032,9 +1124,16 @@ const StockOverview = ({
                   <span className="text-xs lg:text-sm text-gray-600">
                     {stock.code}
                   </span>
-                  <Badge variant="outline" className="text-xs">
-                    {stock.length}
-                  </Badge>
+                  {(stock.stock_type !== 'hardware') && (
+                    <Badge variant="outline" className="text-xs">
+                      {stock.length}
+                    </Badge>
+                  )}
+                  {(stock.stock_type === 'hardware') && (
+                    <Badge variant="secondary" className="text-xs bg-blue-100 text-blue-800">
+                      Hardware
+                    </Badge>
+                  )}
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-xs lg:text-sm text-gray-600">

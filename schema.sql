@@ -536,7 +536,7 @@ CREATE TABLE IF NOT EXISTS "public"."quotation_items" (
     "quotation_id" "uuid" NOT NULL,
     "stock_name" character varying(255) NOT NULL,
     "stock_code" character varying(50) NOT NULL,
-    "length" character varying(10) NOT NULL,
+    "length" character varying(10),
     "pieces" integer NOT NULL,
     "price_per_piece" numeric(10,2) NOT NULL,
     "subtotal" numeric(12,2) DEFAULT 0 NOT NULL,
@@ -637,10 +637,11 @@ ALTER TABLE "public"."stock_history" OWNER TO "postgres";
 
 
 CREATE TABLE IF NOT EXISTS "public"."stocks" (
+    "stock_type" character varying(50) DEFAULT 'aluminium_stock' NOT NULL,
     "id" "uuid" DEFAULT "extensions"."uuid_generate_v4"() NOT NULL,
     "name" character varying(255) NOT NULL,
     "code" character varying(50) NOT NULL,
-    "length" character varying(10) NOT NULL,
+    "length" character varying(10),
     "quantity" integer DEFAULT 0 NOT NULL,
     "created_at" timestamp with time zone DEFAULT "now"(),
     "updated_at" timestamp with time zone DEFAULT "now"(),
@@ -711,7 +712,8 @@ ALTER TABLE ONLY "public"."stocks"
 
 
 ALTER TABLE ONLY "public"."stocks"
-    ADD CONSTRAINT "unique_product_id" UNIQUE ("length", "code");
+    DROP CONSTRAINT IF EXISTS "unique_product_id";
+    ADD CONSTRAINT "unique_product_id" UNIQUE ("length", "code", "stock_type");
 
 
 

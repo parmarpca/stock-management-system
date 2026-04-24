@@ -30,3 +30,7 @@ dist-ssr
 *.recovery.txt
 
 .temp
+
+.agent
+
+graphify-out

@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { stockLength } from "@/constants/config";
+import { useAuth } from "@/contexts/AuthContext";
 
 export interface QuotationItem {
   id: string;
@@ -81,6 +82,7 @@ export const useQuotationData = () => {
   const [quotations, setQuotations] = useState<Quotation[]>([]);
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [loading, setLoading] = useState(true);
+  const { user, isAdmin } = useAuth();
 
   const fetchCustomers = async (): Promise<Customer[]> => {
     try {
@@ -184,6 +186,10 @@ export const useQuotationData = () => {
           quotation_additional_costs(*)
         `);
 
+      if (!isAdmin && user?.id) {
+        query = query.eq("user_id", user.id);
+      }
+
       if (showTodayOnly) {
         const today = new Date().toISOString().split("T")[0];
         query = query.eq("quotation_date", today);
@@ -250,6 +256,7 @@ export const useQuotationData = () => {
             gst_type: gstType,
             gst_percentage: gstPercentage,
             show_unit_price: showUnitPrice,
+            user_id: user?.id,
           },
         ])
         .select()
@@ -455,7 +462,7 @@ export const useQuotationData = () => {
     };
 
     loadData();
-  }, []);
+  }, [user?.id, isAdmin]);
 
   return {
     quotations,
