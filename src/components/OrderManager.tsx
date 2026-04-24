@@ -37,6 +37,7 @@ import { Switch } from "@/components/ui/switch";
 import { SuccessDialog } from "@/components/ui/success-dialog";
 import { Stock, Customer, Order, OrderItem, OrderAdditionalCost } from "@/hooks/useStockData";
 import { useCompanySettings } from "@/hooks/useCompanySettings";
+import { useAuth } from "@/contexts/AuthContext";
 import { cn } from "@/lib/utils";
 
 interface OrderManagerProps {
@@ -117,6 +118,7 @@ const OrderManager = ({
   setFilterCustomer,
 }: OrderManagerProps) => {
   const { companySettings } = useCompanySettings();
+  const { hasAluminiumAccess, hasHardwareAccess } = useAuth();
 
   const dynamicLengthOptions = Array.from(new Set(stocks.map(s => s.length).filter(Boolean))).sort();
 
@@ -151,6 +153,7 @@ const OrderManager = ({
   const [stockError, setStockError] = useState("");
   const [showStockSuggestions, setShowStockSuggestions] = useState(false);
   const [selectedStockIndex, setSelectedStockIndex] = useState(-1);
+  const [activeStockTypeFilter, setActiveStockTypeFilter] = useState("all");
 
   // Filter states
   const [mobileNumber, setMobileNumber] = useState("");
@@ -205,7 +208,8 @@ const OrderManager = ({
     (stock) =>
       (stock.name.toLowerCase().includes(stockSearch.toLowerCase()) ||
         stock.code.toLowerCase().includes(stockSearch.toLowerCase())) &&
-      (stockLengthFilter === "all" || stock.length === stockLengthFilter)
+      (stockLengthFilter === "all" || stock.length === stockLengthFilter) &&
+      (activeStockTypeFilter === "all" || stock.stock_type === activeStockTypeFilter || (!stock.stock_type && activeStockTypeFilter === 'aluminium_stock'))
   );
 
   const filteredCustomers = customers.filter((customer) =>
@@ -464,6 +468,7 @@ const OrderManager = ({
     setOriginalOrderItems([]);
     setStockSearch("");
     setStockLengthFilter("all");
+    setActiveStockTypeFilter("all");
     setSelectedStock(null);
     setPieces(0);
     setPricePerPiece("");
@@ -1403,27 +1408,52 @@ const OrderManager = ({
                   <h3 className="text-lg font-semibold">Add Items to Order</h3>
 
                   <div className="grid grid-cols-1 md:grid-cols-4 lg:grid-cols-5 gap-4">
-                    <div>
-                      <Label htmlFor="stock-length-filter">Length</Label>
-                      <Select
-                        value={stockLengthFilter}
-                        onValueChange={(v) => {
-                          setStockLengthFilter(v);
-                          setSelectedStock(null);
-                          setShowStockSuggestions(true);
-                        }}
-                      >
-                        <SelectTrigger id="stock-length-filter">
-                          <SelectValue placeholder="All lengths" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="all">All lengths</SelectItem>
-                          {dynamicLengthOptions.map((l) => (
-                            <SelectItem key={l} value={l}>{l}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
+                    {hasAluminiumAccess && hasHardwareAccess && (
+                      <div>
+                        <Label htmlFor="stock-type-filter">Stock Type</Label>
+                        <Select
+                          value={activeStockTypeFilter}
+                          onValueChange={(v) => {
+                            setActiveStockTypeFilter(v);
+                            setStockLengthFilter("all");
+                            setSelectedStock(null);
+                          }}
+                        >
+                          <SelectTrigger id="stock-type-filter">
+                            <SelectValue placeholder="All Types" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="all">All Types</SelectItem>
+                            <SelectItem value="aluminium_stock">Aluminium</SelectItem>
+                            <SelectItem value="hardware">Hardware</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    )}
+
+                    {hasAluminiumAccess && activeStockTypeFilter !== 'hardware' && (
+                      <div>
+                        <Label htmlFor="stock-length-filter">Length</Label>
+                        <Select
+                          value={stockLengthFilter}
+                          onValueChange={(v) => {
+                            setStockLengthFilter(v);
+                            setSelectedStock(null);
+                            setShowStockSuggestions(true);
+                          }}
+                        >
+                          <SelectTrigger id="stock-length-filter">
+                            <SelectValue placeholder="All lengths" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="all">All lengths</SelectItem>
+                            {dynamicLengthOptions.map((l) => (
+                              <SelectItem key={l} value={l}>{l}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    )}
 
                     <div className="relative md:col-span-1 lg:col-span-1">
                       <Label htmlFor="stock-search">Search Stock</Label>

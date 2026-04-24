@@ -46,6 +46,7 @@ import {
   User,
   Trash2,
 } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useAuth } from "@/contexts/AuthContext";
 import { userService, UserData } from "@/services/userService";
 import { supabase } from "@/integrations/supabase/client";
@@ -55,6 +56,7 @@ const UserManager = () => {
   const [isCreating, setIsCreating] = useState(false);
   const [isDeleting, setIsDeleting] = useState<string | null>(null);
   const [users, setUsers] = useState<UserData[]>([]);
+  const [userPermissions, setUserPermissions] = useState<Record<string, { has_aluminium_access: boolean; has_hardware_access: boolean }>>({});
   const [loading, setLoading] = useState(true);
   const { isAdmin, user: currentUser } = useAuth();
 
@@ -66,8 +68,27 @@ const UserManager = () => {
   useEffect(() => {
     if (isAdmin) {
       fetchUsers();
+      fetchPermissions();
     }
   }, [isAdmin]);
+
+  const fetchPermissions = async () => {
+    try {
+      const { data, error } = await supabase.from("user_permissions").select("*");
+      if (!error && data) {
+        const permMap = data.reduce((acc: any, curr) => {
+          acc[curr.user_id] = {
+            has_aluminium_access: curr.has_aluminium_access,
+            has_hardware_access: curr.has_hardware_access
+          };
+          return acc;
+        }, {});
+        setUserPermissions(permMap);
+      }
+    } catch (error) {
+      console.error("Error fetching permissions:", error);
+    }
+  };
 
   const fetchUsers = async () => {
     try {
@@ -161,6 +182,35 @@ const UserManager = () => {
   const formatDateTime = (dateString?: string) => {
     if (!dateString) return "Never";
     return new Date(dateString).toLocaleString();
+  };
+
+  const handleTogglePermission = async (userId: string, type: "aluminium" | "hardware", currentValue: boolean) => {
+    try {
+      const currentPerms = userPermissions[userId] || { has_aluminium_access: true, has_hardware_access: false };
+      
+      const newPerms = {
+        user_id: userId,
+        has_aluminium_access: type === "aluminium" ? !currentValue : currentPerms.has_aluminium_access,
+        has_hardware_access: type === "hardware" ? !currentValue : currentPerms.has_hardware_access,
+      };
+
+      const { error } = await supabase
+        .from("user_permissions")
+        .upsert(newPerms, { onConflict: "user_id" });
+
+      if (error) throw error;
+
+      setUserPermissions(prev => ({
+        ...prev,
+        [userId]: {
+          has_aluminium_access: newPerms.has_aluminium_access,
+          has_hardware_access: newPerms.has_hardware_access
+        }
+      }));
+    } catch (error) {
+      console.error("Error updating permissions:", error);
+      alert("Failed to update user permissions.");
+    }
   };
 
   if (!isAdmin) {
@@ -320,6 +370,7 @@ const UserManager = () => {
                   <TableRow>
                     <TableHead>Email</TableHead>
                     <TableHead>Role</TableHead>
+                    <TableHead>Permissions</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead>Created</TableHead>
                     <TableHead>Last Sign In</TableHead>
@@ -351,6 +402,26 @@ const UserManager = () => {
                             )}
                             {user.role === "admin" ? "Admin" : "User"}
                           </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex flex-col space-y-2">
+                            <div className="flex items-center space-x-2">
+                              <Checkbox
+                                id={`alum-${user.id}`}
+                                checked={userPermissions[user.id]?.has_aluminium_access ?? true}
+                                onCheckedChange={(checked) => handleTogglePermission(user.id, "aluminium", !checked)}
+                              />
+                              <label htmlFor={`alum-${user.id}`} className="text-sm cursor-pointer">Aluminium</label>
+                            </div>
+                            <div className="flex items-center space-x-2">
+                              <Checkbox
+                                id={`hard-${user.id}`}
+                                checked={userPermissions[user.id]?.has_hardware_access ?? false}
+                                onCheckedChange={(checked) => handleTogglePermission(user.id, "hardware", !checked)}
+                              />
+                              <label htmlFor={`hard-${user.id}`} className="text-sm cursor-pointer">Hardware</label>
+                            </div>
+                          </div>
                         </TableCell>
                         <TableCell>
                           <Badge
@@ -414,7 +485,7 @@ const UserManager = () => {
                   {users.length === 0 && (
                     <TableRow>
                       <TableCell
-                        colSpan={6}
+                        colSpan={7}
                         className="text-center text-gray-500 py-8"
                       >
                         No users found. Create your first user above.

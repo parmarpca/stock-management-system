@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { stockLength } from "@/constants/config";
+import { useAuth } from "@/contexts/AuthContext";
 
 export interface Stock {
   id: string;
@@ -9,6 +10,7 @@ export interface Stock {
   length: stockLength;
   quantity: number;
   weight?: number; // Weight in kg
+  stock_type?: string;
   created_at: string;
   updated_at: string;
 }
@@ -77,13 +79,27 @@ export const useStockData = () => {
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
+  const { hasAluminiumAccess, hasHardwareAccess, user, isAdmin } = useAuth();
 
   const fetchStocks = async () => {
     try {
-      const { data, error } = await supabase
+      if (!hasAluminiumAccess && !hasHardwareAccess) {
+        setStocks([]);
+        return;
+      }
+
+      let query = supabase
         .from("stocks")
         .select("*")
         .order("name");
+
+      if (hasAluminiumAccess && !hasHardwareAccess) {
+        query = query.eq("stock_type", "aluminium_stock");
+      } else if (hasHardwareAccess && !hasAluminiumAccess) {
+        query = query.eq("stock_type", "hardware");
+      }
+
+      const { data, error } = await query;
 
       if (error) throw error;
       setStocks(data || []);
@@ -133,6 +149,10 @@ export const useStockData = () => {
 
       if (!includeHidden) {
         query = query.eq("is_hidden", false);
+      }
+
+      if (!isAdmin && user?.id) {
+        query = query.eq("user_id", user.id);
       }
 
       if (showTodayOnly) {
@@ -211,18 +231,29 @@ export const useStockData = () => {
   const createOrUpdateStock = async (stockData: {
     name: string;
     code: string;
-    length: stockLength;
+    length: stockLength | string;
     quantity: number;
     weight?: number;
+    stock_type?: string;
   }) => {
     try {
-      // Unique key is the combination of code + length
-      const { data: existingStock, error: checkError } = await supabase
+      // Normalize length for hardware
+      const normalizedLength = stockData.stock_type === 'hardware' ? null : stockData.length;
+
+      // Unique key is the combination of code + length + stock_type
+      let query = supabase
         .from("stocks")
         .select("*")
         .eq("code", stockData.code)
-        .eq("length", stockData.length)
-        .maybeSingle();
+        .eq("stock_type", stockData.stock_type || "aluminium_stock");
+        
+      if (stockData.stock_type === 'hardware') {
+         query = query.or('length.is.null,length.eq.""');
+      } else {
+         query = query.eq("length", normalizedLength);
+      }
+
+      const { data: existingStock, error: checkError } = await query.maybeSingle();
 
       if (checkError) {
         throw checkError;
@@ -248,7 +279,7 @@ export const useStockData = () => {
         // Different code, or same code but different length → create new row
         const { data, error } = await supabase
           .from("stocks")
-          .insert([stockData])
+          .insert([{ ...stockData, length: normalizedLength, stock_type: stockData.stock_type || "aluminium_stock" }])
           .select()
           .single();
 
@@ -292,6 +323,7 @@ export const useStockData = () => {
           gst_percentage: gstPercentage,
           show_unit_price: showUnitPrice,
           site_name: siteName,
+          user_id: user?.id,
           ...(orderDate ? { order_date: orderDate } : {}),
         }])
         .select()
@@ -406,7 +438,7 @@ export const useStockData = () => {
     };
 
     loadData();
-  }, []);
+  }, [hasAluminiumAccess, hasHardwareAccess, user?.id, isAdmin]);
 
   const deleteOrder = async (orderId: string) => {
     try {
