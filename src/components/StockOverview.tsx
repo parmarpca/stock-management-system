@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useMemo } from "react";
 import {
   Package,
   Plus,
@@ -125,20 +125,24 @@ const StockOverview = ({
     return Array.from(new Set(prefixes)).sort();
   };
 
+  const stockByType = useMemo(() => {
+    return stocks.filter((stock) => {
+      if (activeTab === "aluminium_stock") {
+        return stock.stock_type === "aluminium_stock" || !stock.stock_type;
+      }
+      return stock.stock_type === "hardware";
+    });
+  }, [stocks, activeTab]);
   // Filter stocks based on all criteria
-  const filteredStocks = stocks.filter((stock) => {
+  const filteredStocks = stockByType.filter((stock) => {
     const matchesSearch =
       stock.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       stock.code.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesLowStock = !showLowStockOnly || stock.quantity < 50;
     const matchesPrefix =
       selectedPrefix === "all" || stock.code.startsWith(selectedPrefix);
-      
-    const matchesTab = (hasAluminiumAccess && hasHardwareAccess) 
-      ? stock.stock_type === activeTab || (!stock.stock_type && activeTab === 'aluminium_stock')
-      : true;
 
-    return matchesSearch && matchesLowStock && matchesPrefix && matchesTab;
+    return matchesSearch && matchesLowStock && matchesPrefix;
   });
 
   // Filter stocks based on code input for suggestions
@@ -554,7 +558,7 @@ const StockOverview = ({
     if (hasActiveFilters()) {
       setIsPrintDialogOpen(true);
     } else {
-      handlePrint(stocks);
+      handlePrint(stockByType);
     }
   };
 
@@ -640,7 +644,7 @@ const StockOverview = ({
               <div className="flex flex-col gap-4 py-4">
                 <Button
                   onClick={() => {
-                    handlePrint(stocks);
+                    handlePrint(stockByType);
                     setIsPrintDialogOpen(false);
                   }}
                   className="w-full"
