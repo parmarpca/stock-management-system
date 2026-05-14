@@ -984,7 +984,7 @@ const OrderManager = ({
       <style>
         @media print { body{margin:0} @page{size:A4;margin:10mm} button{display:none} }
         body{font-family:Arial,sans-serif;background:#fff;color:#000;font-size:12px;}
-        table{page-break-inside:avoid;}
+        table{page-break-inside:auto;}
       </style></head><body>
       <div style="max-width:800px;margin:0 auto;padding:15px;">
         <div style="text-align:center;margin-bottom:20px;border-bottom:1px solid #000;padding-bottom:10px;">
@@ -1107,7 +1107,7 @@ const OrderManager = ({
         ${selectedOrdersList
         .map(
           (order, index) => `
-          <div style="margin-bottom: 8px; page-break-inside: avoid;">
+          <div style="margin-bottom: 8px; page-break-inside: auto;">
             <div style="background-color: #f0f0f0; padding: 3px; border: 1px solid #000; font-weight: bold; font-size: 16px;">
               Order #${index + 1} - ${order.customer_name} - ${order.order_date
             }${order.color_code ? ` - Color: ${order.color_code}` : ""}${order.site_name ? ` - Site Name: ${order.site_name}` : ` <div style="display:inline-block; border:1px solid #000; width:100px; height:14px; margin-left: 5px;"></div>`}
@@ -1187,7 +1187,7 @@ const OrderManager = ({
                 @page { size: A4; margin: 10mm; }
               }
               body { font-family: Arial, sans-serif; }
-              table { page-break-inside: avoid; }
+              table { page-break-inside: auto; }
               .order-section { page-break-inside: avoid; }
             </style>
           </head>
@@ -2557,6 +2557,11 @@ const OrderManager = ({
                       <div className="flex items-center gap-2 mb-2">
                         <h3 className="font-semibold text-lg">
                           {order.customer_name}
+                          {order.order_number && (
+                            <span className="ml-2 text-sm text-gray-500">
+                              #{order.order_number}
+                            </span>
+                          )}
                         </h3>
                       </div>
                       <div className="flex items-center gap-4 mb-3">
@@ -2608,6 +2613,15 @@ const OrderManager = ({
                               0
                             ) || 0}{" "}
                             pieces
+                            <span className="mx-2">|</span>
+                            {order.order_items?.reduce(
+                              (total, item) =>
+                                total +
+                                (item.manual_net_weight ||
+                                  (item.weight || 0) * item.pieces_used),
+                              0
+                            ).toFixed(3)}{" "}
+                            kg
                           </span>
                         </div>
                       </div>

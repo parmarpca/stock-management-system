@@ -711,7 +711,7 @@ const QuotationManager = ({
       <style>
         @media print { body{margin:0} @page{size:A4;margin:10mm} button{display:none} }
         body{font-family:Arial,sans-serif;background:#fff;color:#000;font-size:12px;}
-        table{page-break-inside:avoid;}
+        table{page-break-inside:auto;}
       </style></head><body>
       <div style="max-width:800px;margin:0 auto;padding:15px;">
         <div style="text-align:center;margin-bottom:20px;border-bottom:1px solid #000;padding-bottom:10px;">

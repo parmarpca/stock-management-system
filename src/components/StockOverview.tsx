@@ -536,7 +536,7 @@ const StockOverview = ({
                 @page { size: A4; margin: 10mm; }
               }
               body { font-family: Arial, sans-serif; }
-              table { page-break-inside: avoid; }
+              table { page-break-inside: auto; }
               .low-stock { background-color: #ffebee !important; }
             </style>
           </head>
