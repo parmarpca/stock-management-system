@@ -685,7 +685,7 @@ const QuotationManager = ({
 
     const gstRows = showPrices && quotation.gst_enabled
       ? `<tr><td style="padding:3px;border-bottom:1px solid #eaeaea;font-weight:bold;">Subtotal</td>
-           <td style="padding:3px;border-bottom:1px solid #eaeaea;text-align:right;font-weight:bold;">₹${quotation.raw_total?.toFixed(2) ?? "0.00"}</td></tr>
+           <td style="padding:3px;border-bottom:1px solid #eaeaea;text-align:right;font-weight:bold;">₹${quotation.subtotal?.toFixed(2) ?? "0.00"}</td></tr>
          <tr><td style="padding:3px;border-bottom:1px solid #eaeaea;">GST (${quotation.gst_percentage ?? 0}%)</td>
            <td style="padding:3px;border-bottom:1px solid #eaeaea;text-align:right;">₹${quotation.gst_amount?.toFixed(2) ?? "0.00"}</td></tr>`
       : "";
